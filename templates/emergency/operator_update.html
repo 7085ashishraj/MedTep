@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Update project request {{ ambulance.pk }} | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container sos-page">
+  <a class="back-link" href="{% url 'emergency:operator_dashboard' %}">Back to the operator queue</a><div class="sos-heading"><p class="eyebrow">Project request #{{ ambulance.pk }}</p><h1>Record the next step.</h1></div>
+  {% include 'partials/ambulance_notice.html' %}
+  <div class="sos-layout"><section class="account-panel" aria-labelledby="update-heading"><h2 id="update-heading">Operator update</h2><p class="text-muted">Keep the current status or advance by one step. Every status change records who changed it and when.</p>
+    {% include 'partials/form_errors.html' with form=form error_heading='Update not saved' only %}
+    <form method="post">{% csrf_token %}{% include 'partials/form_fields.html' with form=form only %}<button class="btn btn-primary" type="submit">Save project update</button></form>
+    <a class="back-link mt-3" href="{% url 'emergency:operator_update' ambulance.pk %}">Reload latest request</a><p class="field-help">FAKE sample facilities remain fictional. No provider is contacted when you select a reference.</p>
+  </section><section class="account-panel" aria-labelledby="operator-location-heading"><h2 id="operator-location-heading">Recorded location</h2><p>{{ ambulance.emergency.latitude }}, {{ ambulance.emergency.longitude }}</p><p class="field-help">Snapshot saved {{ ambulance.emergency.created_at|date:'d M Y, H:i T' }}. Confirm the location through your real-world procedure before acting.</p><a class="back-link" href="{{ maps_url }}" target="_blank" rel="noopener noreferrer">Open recorded location in Google Maps</a>
+    <h3 class="ambulance-reference-heading">Recorded status history</h3><ul class="operator-event-list">{% for event in ambulance.status_events.all %}<li><strong>{{ event.get_status_display }}</strong><span>{{ event.created_at|date:'d M Y, H:i T' }} · {% if event.changed_by %}{{ event.changed_by.username }}{% else %}Deleted account{% endif %}</span></li>{% empty %}<li>No earlier event history was recorded for this request.</li>{% endfor %}</ul>
+  </section></div>
+</div></section>
+{% endblock %}

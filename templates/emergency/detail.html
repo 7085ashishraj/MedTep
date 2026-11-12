@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Share your SOS location | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container sos-page">
+  <div class="sos-heading"><p class="eyebrow">Saved to your account</p><h1>Your request is saved.<br>Now share it.</h1><p>No one has been notified by MEDTAP. Choose how to reach your people below.</p></div>
+  <div class="sos-critical-note"><strong>This app does not replace calling 112.</strong> No real ambulance dispatch is confirmed by this app. <a href="tel:112">Call 112 for emergency assistance.</a></div>
+  <div class="ambulance-sos-link">{% if ambulance %}<a class="btn btn-outline-primary" href="{% url 'emergency:ambulance_detail' ambulance.pk %}">View project ambulance request</a>{% elif emergency.status == 'active' %}<a class="btn btn-outline-primary" href="{% url 'emergency:ambulance_request' emergency.pk %}">Start project ambulance request</a>{% endif %}<p class="field-help">Saving SOS alone does not create a transport request. The separate project workflow does not contact a dispatch service.</p></div>
+  <div class="sos-layout">
+    <section class="account-panel" aria-labelledby="message-heading">
+      <h2 id="message-heading">A message ready to send</h2>
+      <ol class="sos-timeline" aria-label="Sharing steps"><li class="sos-step-complete"><strong>Location recorded</strong><span>{{ emergency.created_at|date:'d M Y, H:i T' }} · {{ emergency.get_status_display }}</span></li><li><strong>Choose a contact or app</strong><span>Open a composer below, or copy the message.</span></li><li><strong>Press Send in that app</strong><span>MEDTAP cannot confirm delivery or a response.</span></li></ol>
+      <label class="form-label" for="sos-message">Message (includes your recorded location)</label>
+      <textarea id="sos-message" class="form-control sos-message" rows="8" readonly>{{ share_message }}</textarea>
+      <div class="sos-share-actions"><button class="btn btn-primary" id="copy-sos-message" type="button" hidden>Copy message</button><a class="btn btn-outline-primary" href="{{ general_share.whatsapp_url }}" target="_blank" rel="noopener noreferrer">Choose in WhatsApp</a><a class="btn btn-outline-primary" href="{{ general_share.sms_url }}">Choose in SMS</a></div>
+      <p id="copy-feedback" class="field-help" role="status" aria-live="polite">You can select and copy the message manually. SMS links need a compatible messaging app and may create multiple billable messages.</p>
+      <p class="field-help">{{ emergency.latitude }}, {{ emergency.longitude }} · <a href="{{ maps_url }}" target="_blank" rel="noopener noreferrer">Open the recorded location in Google Maps</a></p>
+      <p class="field-help">The snapshot does not update as you move. Opening a sharing link passes this message to the selected service; review its recipient and press Send yourself. Your medical profile is not included.</p>
+    </section>
+    <section class="account-panel" aria-labelledby="contact-heading"><p class="eyebrow">Reach someone you trust</p><h2 id="contact-heading">Your emergency contacts</h2>
+      {% for row in contact_shares %}<article class="sos-contact"><div class="contact-heading"><h3>{{ row.contact.name }}</h3>{% if row.contact.is_primary %}<span class="primary-label">Primary contact</span>{% endif %}</div><p class="text-muted">{{ row.contact.relationship }} · {{ row.contact.phone }}</p>
+        <div class="sos-share-actions">{% if row.options.whatsapp_url %}<a class="btn btn-outline-primary" href="{{ row.options.whatsapp_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open WhatsApp message to {{ row.contact.name }}">WhatsApp</a>{% endif %}{% if row.options.sms_url %}<a class="btn btn-outline-primary" href="{{ row.options.sms_url }}" aria-label="Open SMS message to {{ row.contact.name }}">SMS</a>{% else %}<span class="field-help">This placeholder or invalid number cannot be used for sharing.</span>{% endif %}</div>
+        {% if not row.options.whatsapp_url and row.options.sms_url %}<p class="field-help">For a direct WhatsApp link, update this contact with a +country-code number. You can also choose them using the general WhatsApp button.</p>{% endif %}
+      </article>{% empty %}<p class="text-muted">No emergency contacts are saved. Use the general share buttons or copy the message for someone you trust.</p>{% endfor %}
+      <a class="back-link" href="{% url 'accounts:profile' %}">Manage emergency contacts {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</a>
+    </section>
+  </div>
+</div></section>
+{% endblock %}

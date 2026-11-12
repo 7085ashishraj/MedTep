@@ -1,0 +1,13 @@
+<article class="facility-card" id="facility-{{ match.facility.pk }}" tabindex="-1" aria-labelledby="facility-title-{{ match.facility.pk }}">
+  <div class="facility-card-top"><span class="facility-number" aria-hidden="true">{{ number }}</span><span class="facility-type">{{ match.facility.get_facility_type_display }}</span>{% if match.facility.is_demo %}<span class="facility-demo-label">FAKE sample</span>{% endif %}</div>
+  <h3 id="facility-title-{{ match.facility.pk }}">{{ match.facility.name }}</h3>
+  <div class="facility-meta">{% if match.distance_km != None %}<span>{% include 'partials/icon.html' with name='geo-alt' class_name='icon-sm' only %} {{ match.distance_km|floatformat:2 }} km away</span>{% else %}<span>Distance needs a location</span>{% endif %}{% if match.facility.is_24x7 %}<span class="facility-hours">Listed as 24×7</span>{% endif %}</div>
+  <p class="facility-address">{{ match.facility.address }}</p>
+  <ul class="facility-specialities" aria-label="Specialities">{% for speciality in match.facility.specialities.all %}<li>{{ speciality.name }}</li>{% empty %}<li>Specialities not listed</li>{% endfor %}</ul>
+  {% if match.facility.is_demo %}<p class="facility-demo-note">Learning data. This is not a real healthcare facility.</p>{% endif %}
+  <div class="facility-card-actions">
+    {% if match.call_url %}<a class="btn btn-primary" href="{{ match.call_url }}" aria-label="Call {{ match.facility.name }}">{% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Call</a>{% else %}<button type="button" class="btn btn-outline-primary" disabled>Call unavailable</button>{% endif %}
+    {% if match.directions_url %}<a class="btn btn-outline-primary" href="{{ match.directions_url }}" target="_blank" rel="noopener noreferrer" aria-label="Directions to {{ match.facility.name }} on Google Maps (opens in a new tab)">{% include 'partials/icon.html' with name='signpost-2' class_name='icon-sm' only %} Directions</a>{% else %}<button type="button" class="btn btn-outline-primary" disabled>Directions unavailable</button>{% endif %}
+    <button type="button" class="facility-map-button" data-show-on-map="{{ match.facility.pk }}" aria-label="Show {{ match.facility.name }} on the map" hidden>On map {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</button>
+  </div>
+</article>

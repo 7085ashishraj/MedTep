@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Something went wrong | MEDTAP{% endblock %}
+{% block content %}<section class="container error-page"><p class="eyebrow">Something went wrong · 500</p><h1>We couldn't load<br>this page.</h1><p>Please try again in a moment. For urgent emergency assistance, call 112 directly.</p><div class="error-actions"><a class="btn btn-primary" href="{% url 'core:home' %}">Go to home</a><a class="btn btn-outline-primary" href="tel:112">Call 112</a></div></section>{% endblock %}

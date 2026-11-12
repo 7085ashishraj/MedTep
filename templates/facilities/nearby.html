@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Find nearby care | MEDTAP{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endblock %}
+{% block content %}
+<section class="finder-section">
+  <div class="container">
+    <header class="finder-heading">
+      <div><p class="eyebrow">Care around you</p><h1>A clearer path.<br>A little closer.</h1><p>Explore hospitals, clinics, pharmacies and blood banks in one place.</p></div>
+      <a class="btn btn-outline-primary" href="tel:112">{% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Urgent? Call 112</a>
+    </header>
+    <div class="finder-notice">{% include 'partials/icon.html' with name='info-circle' only %}<p><strong>A directory, not live availability.</strong> Listed hours and specialities do not confirm beds, medicines, blood stock or emergency capacity. FAKE samples are for learning only.</p></div>
+    <form method="get" action="{% url 'facilities:nearby' %}" class="finder-filter-panel" data-location-form role="search" aria-label="Find facilities">
+      {% include 'partials/form_errors.html' with form=form error_heading='Please check your search' only %}
+      <div class="finder-filters">
+        {% for field in form %}{% if field.name != 'latitude' and field.name != 'longitude' and field.name != 'page' and field.name != 'open_24x7' %}
+        <div class="field-wrapper{% if field.name == 'q' %} finder-query{% endif %}">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+          {% if field.help_text %}<div class="field-help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+          {% if field.errors %}<ul class="field-errors" id="{{ field.auto_id }}_error">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+      <div class="finder-filter-actions">
+        <label class="checkbox-label" for="{{ form.open_24x7.id_for_label }}">{{ form.open_24x7 }} <span>{{ form.open_24x7.label }}</span></label>
+        <button type="submit" class="btn btn-primary">Find care {% include 'partials/icon.html' with name='search' class_name='icon-sm' only %}</button>
+        <a class="finder-reset" href="{% url 'facilities:nearby' %}">Clear filters &amp; location</a>
+      </div>
+      <div class="finder-location">
+        <div class="finder-location-actions">
+          {% include 'partials/location_button.html' %}
+          <a class="btn btn-outline-primary" href="{% url 'facilities:nearby' %}?latitude=12.970000&amp;longitude=77.590000&amp;radius_km=5">Try demo location</a>
+        </div>
+        <p id="location-feedback" class="location-feedback" role="status" aria-live="polite" aria-atomic="true">{% if has_location %}Distances are measured from the coordinates below.{% else %}Add a location for distance sorting, or browse by name and address.{% endif %}</p>
+        <details data-manual-location{% if form.latitude.errors or form.longitude.errors or has_location or form.non_field_errors %} open{% endif %}>
+          <summary>Enter or check coordinates</summary>
+          <div class="manual-location-fields">
+            {% for field in form %}{% if field.name == 'latitude' or field.name == 'longitude' %}
+            <div class="field-wrapper"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.errors %}<ul class="field-errors" id="{{ field.auto_id }}_error">{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}</div>
+            {% endif %}{% endfor %}
+            <button type="submit" class="btn btn-outline-primary">Apply coordinates</button>
+          </div>
+          <p class="field-help">Demo centre: latitude 12.970000, longitude 77.590000. This is a synthetic test location, not your location. Text search matches stored names, addresses and specialities; it does not convert place names into coordinates.</p>
+        </details>
+        <p class="finder-privacy">Location is requested only when you tap the button. Search coordinates are sent to this server in the URL and may appear in browser history and server logs; they are not saved to your profile. The map provider receives requests for the area you view.</p>
+      </div>
+    </form>
+    {% if not form.errors %}
+    <div class="finder-results-heading" id="results-heading">
+      <div><h2 id="results-title">{{ page_obj.paginator.count }} facilit{{ page_obj.paginator.count|pluralize:'y,ies' }} found</h2><p>{% if has_location %}Nearest first · Approximate straight-line distance, not travel time.{% else %}A–Z · Add a location to see the nearest facilities first.{% endif %}</p></div>
+      <a class="finder-reset" href="#facility-map-heading">Go to map {% include 'partials/icon.html' with name='arrow-down' class_name='icon-sm' only %}</a>
+    </div>
+    <div class="finder-layout">
+      <section class="facility-list" aria-labelledby="results-title">
+        {% for match in page_obj %}{% include 'partials/facility_card.html' with match=match number=forloop.counter only %}{% empty %}
+        <div class="finder-empty"><span class="action-icon">{% include 'partials/icon.html' with name='search' class_name='icon-lg' only %}</span><h3>No matches this time.</h3><p>Try a different type or speciality, widen the distance, or clear your filters. The FAKE samples are near the demo location.</p><a class="btn btn-outline-primary" href="{% url 'facilities:nearby' %}">Browse all facilities</a></div>
+        {% endfor %}
+        {% if page_obj.paginator.num_pages > 1 %}
+        <nav class="finder-pagination" aria-label="Search result pages">
+          {% if previous_query %}<a class="btn btn-outline-primary" href="{{ previous_query }}#results-heading">Previous</a>{% endif %}
+          <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if next_query %}<a class="btn btn-outline-primary" href="{{ next_query }}#results-heading">Next</a>{% endif %}
+        </nav>
+        {% endif %}
+      </section>
+      <section class="finder-map-panel" aria-labelledby="facility-map-heading">
+        <div class="finder-map-heading"><h2 id="facility-map-heading">A view of your search</h2><p>Numbered pins match the cards on this page. FAKE pins are labelled Demo.</p></div>
+        <div id="facility-map" class="facility-map" aria-label="Facility locations; the same information is available in the list"></div>
+        <p id="map-feedback" class="map-feedback" role="status" aria-live="polite">Loading the map… The list remains available below or alongside it.</p>
+        <noscript><p class="map-feedback">Enable JavaScript to see the map. All facility details are available in the list.</p></noscript>
+        <div class="map-legend"><span><i class="legend-dot" aria-hidden="true"></i> Facility</span><span><i class="legend-dot legend-demo" aria-hidden="true"></i> FAKE sample</span><span><i class="legend-dot legend-origin" aria-hidden="true"></i> Search location</span></div>
+        <p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Report a map issue</a></p>
+      </section>
+    </div>
+    {{ map_data|json_script:'facility-map-data' }}
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}" defer></script>
+<script src="{% static 'js/location.js' %}" defer></script>
+<script src="{% static 'js/facilities.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Review transport request | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container account-form-shell">
+  <a class="back-link" href="{% url 'emergency:ambulance_start' %}">Back to your requests</a>
+  <p class="eyebrow">Check the location first</p><h1>Request transport<br>for this snapshot.</h1>
+  {% include 'partials/ambulance_notice.html' %}
+  <div class="account-panel"><h2>Your recorded location</h2><p>{{ emergency.latitude }}, {{ emergency.longitude }}</p><p class="text-muted">Saved {{ emergency.created_at|date:'d M Y, H:i T' }}. This snapshot does not follow you as you move.</p>
+    <a class="back-link" href="{{ maps_url }}" target="_blank" rel="noopener noreferrer">Check this location in Google Maps</a>
+    {% if error %}<div class="form-error-summary" id="form-error-summary" role="alert" tabindex="-1"><h2>Request not created</h2><p>{{ error }}</p></div>{% endif %}
+    {% if can_request %}<p>Submitting creates one request in the MEDTAP project queue, visible to authorised operators. Your medical profile and emergency contacts are not included.</p><form method="post">{% csrf_token %}<button type="submit" class="btn btn-primary">Create project ambulance request</button></form>{% else %}<p>Only an active SOS record can start a request. <a href="{% url 'emergency:start' %}">Save a new location</a> if needed.</p>{% endif %}
+  </div>
+</div></section>
+{% endblock %}

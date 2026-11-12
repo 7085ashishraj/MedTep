@@ -1,0 +1,9 @@
+<a href="{{ card.href }}" class="action-card" aria-describedby="action-description-{{ card.key }}">
+  <span class="action-card-top">
+    <span class="action-icon{% if card.tone == 'teal' %} action-icon-teal{% endif %}">{% include 'partials/icon.html' with name=card.icon class_name='icon-lg' only %}</span>
+    <span class="action-arrow">{% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</span>
+  </span>
+  <span class="action-title">{{ card.title }}</span>
+  <span class="action-description" id="action-description-{{ card.key }}">{{ card.description }}</span>
+  <span class="action-status action-status-ready">{{ card.status }}</span>
+</a>

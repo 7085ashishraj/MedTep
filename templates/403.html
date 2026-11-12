@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Access restricted | MEDTAP{% endblock %}
+{% block content %}<section class="container error-page"><p class="eyebrow">Access restricted · 403</p><h1>This page needs<br>the right account.</h1><p>You may need to sign in with an account allowed to use this page. Your private records are protected.</p><div class="error-actions"><a class="btn btn-primary" href="{% url 'core:home' %}">Go to home</a><a class="btn btn-outline-primary" href="{% url 'accounts:login' %}">Sign in</a><a class="btn btn-outline-primary" href="tel:112">Call 112</a></div></section>{% endblock %}

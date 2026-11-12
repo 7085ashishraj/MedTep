@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Your medical profile | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section">
+  <div class="container">
+    <div class="profile-page-heading">
+      <div><p class="eyebrow">Your health, in one place</p><h1>Your medical profile.</h1><p class="text-muted mb-0">Your details and emergency contacts, kept up to date by you.</p></div>
+      <a class="btn btn-primary" href="{% url 'accounts:profile_edit' %}">{% include 'partials/icon.html' with name='pencil' class_name='icon-sm' only %} Edit medical details</a>
+    </div>
+    <div class="profile-layout">
+      <div>
+        <section class="medical-id" aria-labelledby="medical-id-heading">
+          <div class="medical-id-top"><span>{% include 'partials/icon.html' with name='heart-pulse' only %} MEDTAP</span><span class="privacy-label">{% include 'partials/icon.html' with name='lock' class_name='icon-sm' only %} Private profile</span></div>
+          <h2 id="medical-id-heading">{{ user.get_full_name|default:user.username }}</h2>
+          <p class="medical-id-username">@{{ user.username }}</p>
+          <div class="blood-group-row"><div><p class="medical-id-label">Blood group</p><p class="blood-group-value">{% if profile %}{{ profile.get_blood_group_display }}{% else %}Unknown{% endif %}</p></div><span class="self-reported">Self-reported</span></div>
+          <p class="medical-id-caption">These details are provided by you and have not been medically verified.</p>
+        </section>
+        <p class="profile-privacy-note">{% include 'partials/icon.html' with name='lock' class_name='icon-sm' only %} Sign-in is required to view this profile. It is not a public medical ID or share link.</p>
+      </div>
+      <div class="profile-details">
+        <section class="account-panel" aria-labelledby="health-details-heading">
+          <h2 id="health-details-heading">Medical details</h2>
+          {% if not profile %}<p class="text-muted">You haven't saved a medical profile yet. Select Edit medical details to get started.</p>{% endif %}
+          <div class="medical-detail"><h3>Allergies</h3><p>{{ profile.allergies|default:'Not recorded'|linebreaksbr }}</p></div>
+          <div class="medical-detail"><h3>Medical conditions</h3><p>{{ profile.medical_conditions|default:'Not recorded'|linebreaksbr }}</p></div>
+          <p class="field-help mb-0">“Not recorded” means no information has been entered.</p>
+        </section>
+        <section class="account-panel" aria-labelledby="contacts-heading">
+          <div class="panel-title-row"><h2 id="contacts-heading">Emergency contacts</h2><a class="btn btn-outline-primary" href="{% url 'accounts:contact_add' %}">{% include 'partials/icon.html' with name='plus-lg' class_name='icon-sm' only %} Add contact</a></div>
+          {% for contact in contacts %}
+          <article class="contact-item">
+            <div class="contact-heading"><h3>{{ contact.name }}</h3>{% if contact.is_primary %}<span class="primary-label">Primary</span>{% endif %}</div>
+            <p class="contact-relationship">{{ contact.relationship }}</p>
+            <p class="contact-phone">{{ contact.phone }}</p>
+            <div class="contact-actions">
+              <a class="btn btn-outline-primary" href="tel:{{ contact.phone }}" aria-label="Call {{ contact.name }}">{% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Call</a>
+              <a class="btn btn-outline-primary" href="{% url 'accounts:contact_edit' contact.pk %}" aria-label="Edit contact {{ contact.name }}">Edit</a>
+              <a class="btn btn-outline-primary" href="{% url 'accounts:contact_delete' contact.pk %}" aria-label="Remove contact {{ contact.name }}">Remove</a>
+            </div>
+          </article>
+          {% empty %}
+          <div class="empty-contacts"><span class="action-icon">{% include 'partials/icon.html' with name='people' only %}</span><h3>Keep your people close.</h3><p>Add someone you would want to reach in an emergency. Adding a contact does not send them a message.</p></div>
+          {% endfor %}
+        </section>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

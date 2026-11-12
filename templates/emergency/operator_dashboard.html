@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Operator queue | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container sos-page">
+  <div class="sos-heading"><p class="eyebrow">Authorised operators only</p><h1>The transport queue.</h1><p>Review project requests and record the next workflow step.</p></div>
+  {% include 'partials/ambulance_notice.html' %}
+  <div class="operator-counts"><div><strong>{{ counts.requested }}</strong><span>Requested</span></div><div><strong>{{ counts.progressing }}</strong><span>In progress</span></div><div><strong>{{ counts.completed }}</strong><span>Completed</span></div></div>
+  <form method="get" class="operator-filter"><div class="field-wrapper"><label class="form-label" for="{{ form.status.id_for_label }}">Show</label>{{ form.status }}</div><button class="btn btn-primary" type="submit">Filter queue</button></form>
+  {% include 'partials/form_errors.html' with form=form error_heading='Please check the queue filter' only %}
+  <div class="ambulance-location-list">{% for ambulance in page_obj %}<article class="account-panel operator-queue-card"><div><p class="eyebrow">Project request #{{ ambulance.pk }}</p><h2>{% if ambulance.emergency.user %}{{ ambulance.emergency.user.username }}{% else %}Deleted account{% endif %}</h2><p class="field-help">Requested {{ ambulance.created_at|date:'d M Y, H:i T' }}</p></div><span class="ambulance-status">{{ ambulance.get_status_display }}</span><a class="btn btn-outline-primary" href="{% url 'emergency:operator_update' ambulance.pk %}">Review &amp; update</a></article>{% empty %}<div class="account-panel"><h2>No requests in this view</h2><p class="text-muted">Choose another status or refresh the queue later.</p></div>{% endfor %}</div>
+  {% if page_obj.paginator.num_pages > 1 %}<nav class="finder-pagination" aria-label="Operator queue pages">{% if previous_query %}<a class="btn btn-outline-primary" href="{{ previous_query }}">Previous</a>{% endif %}<span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% if next_query %}<a class="btn btn-outline-primary" href="{{ next_query }}">Next</a>{% endif %}</nav>{% endif %}
+</div></section>
+{% endblock %}

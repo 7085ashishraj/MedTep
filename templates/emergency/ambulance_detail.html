@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Ambulance request {{ ambulance.pk }} | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container sos-page" id="ambulance-progress" data-status-url="{% url 'emergency:ambulance_status' ambulance.pk %}" data-status="{{ ambulance.status }}">
+  <a class="back-link" href="{% url 'emergency:ambulance_start' %}">Your transport requests</a>
+  <div class="sos-heading"><p class="eyebrow">Project request #{{ ambulance.pk }}</p><h1>Follow each step.<br>Stay informed.</h1><p>Updates below are reported by a project operator. They do not verify a real-world dispatch.</p></div>
+  {% include 'partials/ambulance_notice.html' %}
+  <div class="sos-layout">
+    <section class="account-panel" aria-labelledby="progress-heading"><div class="panel-title-row"><h2 id="progress-heading">Request progress</h2><span class="ambulance-status" id="ambulance-current-status">{{ snapshot.status_label }}</span></div>
+      <ol class="ambulance-timeline" aria-label="Operator-reported project progress">{% for step in snapshot.timeline %}<li data-ambulance-step="{{ step.status }}" class="{% if step.is_reached %}ambulance-step-reached{% endif %}{% if step.is_current %} ambulance-step-current{% endif %}"{% if step.is_current %} aria-current="step"{% endif %}><strong>{{ step.label }}</strong><span data-step-time>{% if step.recorded_at %}{{ step.recorded_at|date:'d M Y, H:i T' }}{% elif step.is_reached %}Timestamp not recorded{% else %}Waiting for an operator update{% endif %}</span></li>{% endfor %}</ol>
+      <p class="field-help">Times shown in IST. Earlier imported records may have no event timestamps.</p>
+      <a class="btn btn-outline-primary" href="{% url 'emergency:ambulance_detail' ambulance.pk %}">Refresh status</a>
+      <p class="field-help" id="ambulance-poll-feedback" role="status" aria-live="polite">{% if ambulance.status == 'completed' %}Project workflow completed. Automatic checks are stopped.{% else %}Use Refresh status for the latest update.{% endif %}</p>
+      <noscript><p class="field-help">Automatic checks need JavaScript. Refresh status works without it.</p></noscript>
+    </section>
+    <section class="account-panel" aria-labelledby="trip-location-heading"><p class="eyebrow">Your saved snapshot</p><h2 id="trip-location-heading">Location &amp; reference</h2><p>{{ ambulance.emergency.latitude }}, {{ ambulance.emergency.longitude }}</p><p class="field-help">Location saved {{ ambulance.emergency.created_at|date:'d M Y, H:i T' }}. It does not update as you move.</p><a class="back-link" href="{{ maps_url }}" target="_blank" rel="noopener noreferrer">View recorded location in Google Maps</a>
+      <h3 class="ambulance-reference-heading">Reference facility</h3><p id="ambulance-facility-name">{% if snapshot.facility %}{{ snapshot.facility.name }}{% else %}No reference facility selected{% endif %}</p><p id="ambulance-facility-demo" class="facility-demo-label"{% if not snapshot.facility.is_demo %} hidden{% endif %}>FAKE sample — not a real provider</p><p class="field-help">A directory reference does not confirm an ambulance, beds or provider participation.</p>
+      <a class="back-link" href="{% url 'emergency:detail' ambulance.emergency_id %}">Open your SOS sharing message</a>
+    </section>
+  </div>
+</div></section>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/ambulance.js' %}" defer></script>{% endblock %}

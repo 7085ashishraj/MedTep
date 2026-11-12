@@ -1,0 +1,9 @@
+{% if user.is_authenticated %}
+<form id="sos-request-form" method="post" action="{% url 'emergency:create' %}" hidden>{% csrf_token %}</form>
+<div class="sos-feedback" id="sos-feedback" role="status" aria-live="polite" tabindex="-1" hidden>
+  <button type="button" class="btn-close sos-feedback-close" id="sos-feedback-dismiss" aria-label="Hide SOS notice" hidden></button>
+  <span class="spinner-border spinner-border-sm" id="sos-spinner" aria-hidden="true" hidden></span>
+  <p id="sos-feedback-text"></p>
+  <a href="{% url 'emergency:start' %}" id="sos-fallback" hidden>Open SOS page for manual entry or saved requests</a>
+</div>
+{% endif %}

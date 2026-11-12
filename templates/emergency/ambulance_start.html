@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Ambulance requests | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section"><div class="container sos-page">
+  <div class="sos-heading"><p class="eyebrow">Your transport requests</p><h1>One request.<br>A clearer next step.</h1><p>Choose one of your ten most recent saved SOS locations to start or review a project ambulance request.</p></div>
+  {% include 'partials/ambulance_notice.html' %}
+  <div class="ambulance-location-list">
+    {% for location in locations %}<article class="account-panel ambulance-location-card"><div><p class="eyebrow">Saved location</p><h2>{{ location.created_at|date:'d M Y, H:i T' }}</h2><p>{{ location.latitude }}, {{ location.longitude }} · SOS {{ location.get_status_display }}</p></div>
+      {% if location.ambulance_request %}<a class="btn btn-primary" href="{% url 'emergency:ambulance_detail' location.ambulance_request.pk %}">View {{ location.ambulance_request.get_status_display|lower }} request</a>{% elif location.status == 'active' %}<a class="btn btn-outline-primary" href="{% url 'emergency:ambulance_request' location.pk %}">Review &amp; request</a>{% else %}<p class="field-help">Only active SOS records can start a new request.</p>{% endif %}
+    </article>{% empty %}<div class="account-panel"><h2>Start with a saved location</h2><p>No SOS locations are saved in your account yet.</p></div>{% endfor %}
+  </div>
+  <a class="btn btn-primary mt-4" href="{% url 'emergency:start' %}">Save a new SOS location {% include 'partials/icon.html' with name='geo-alt' class_name='icon-sm' only %}</a>
+</div></section>
+{% endblock %}

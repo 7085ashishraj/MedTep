@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}{% if is_registration %}Create your account{% else %}Login{% endif %} | MEDTAP{% endblock %}
+{% block content %}
+<section class="account-section">
+  <div class="container">
+    <div class="auth-layout">
+      <div class="auth-intro">
+        <p class="eyebrow">Your care, together</p>
+        <h1>{% if is_registration %}A little prepared.<br>A little more at ease.{% else %}Welcome back.<br>Your care starts here.{% endif %}</h1>
+        <p>Keep your medical details and the people you count on in one place.</p>
+        <div class="auth-benefits">
+          <div>{% include 'partials/icon.html' with name='person-vcard' only %}<span>A medical profile for your blood group, allergies and conditions.</span></div>
+          <div>{% include 'partials/icon.html' with name='people' only %}<span>Emergency contacts you can keep up to date.</span></div>
+          <div>{% include 'partials/icon.html' with name='lock' only %}<span>Profile pages that require you to sign in.</span></div>
+        </div>
+        <p class="auth-reminder">This app does not replace calling 112 in a real emergency.</p>
+      </div>
+      <div class="account-panel">
+        <p class="eyebrow">{% if is_registration %}Get started{% else %}Your account{% endif %}</p>
+        <h2>{% if is_registration %}Create your account{% else %}Sign in to MEDTAP{% endif %}</h2>
+        <p class="text-muted mb-4">{% if is_registration %}Start with an account. Add medical details whenever you're ready.{% else %}Use your username and password to continue.{% endif %}</p>
+        {% if is_registration %}
+        {% include 'partials/form_errors.html' with error_heading="Your account hasn't been created" error_intro='Fix the errors below, then select Create account again.' %}
+        {% else %}
+        {% include 'partials/form_errors.html' with error_heading="We couldn't sign you in" %}
+        {% endif %}
+        <form method="post" action="{% if is_registration %}{% url 'accounts:register' %}{% else %}{% url 'accounts:login' %}{% endif %}">
+          {% csrf_token %}
+          {% if not is_registration %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+          {% include 'partials/form_fields.html' %}
+          <button class="btn btn-primary w-100" type="submit">{% if is_registration %}Create account{% else %}Sign in{% endif %} {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</button>
+        </form>
+        <p class="auth-switch">{% if is_registration %}Already have an account? <a href="{% url 'accounts:login' %}">Sign in</a>{% else %}New to MEDTAP? <a href="{% url 'accounts:register' %}">Create an account</a>{% endif %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

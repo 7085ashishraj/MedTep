@@ -1,0 +1,3 @@
+{% extends 'base.html' %}
+{% block title %}Request could not be read | MEDTAP{% endblock %}
+{% block content %}<section class="container error-page"><p class="eyebrow">Request could not be read · 400</p><h1>Please try<br>that page again.</h1><p>We couldn't read this request. Return home and open the page you need.</p><div class="error-actions"><a class="btn btn-primary" href="{% url 'core:home' %}">Go to home</a><a class="btn btn-outline-primary" href="tel:112">Call 112</a></div></section>{% endblock %}

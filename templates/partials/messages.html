@@ -1,0 +1,10 @@
+{% if messages %}
+<div class="container message-container" aria-label="Notifications">
+  {% for message in messages %}
+  <div class="alert {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}alert-danger{% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}alert-success{% else %}alert-info{% endif %} alert-dismissible fade show" role="{% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}alert{% else %}status{% endif %}">
+    {{ message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss notification"></button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

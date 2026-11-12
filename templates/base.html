@@ -1,0 +1,41 @@
+{% load static %}
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="MEDTAP is a medical emergency project that helps you find your way to care. In a real emergency, call 112.">
+  <meta name="theme-color" content="#023E8A">
+  <title>{% block title %}MEDTAP | A little closer to care{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/theme.css' %}?v=20261112b">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  {% include 'partials/navbar.html' %}
+  <main id="main-content" class="site-main" tabindex="-1">
+    {% include 'partials/messages.html' %}
+    {% block content %}{% endblock %}
+  </main>
+  {% include 'partials/footer.html' %}
+  {% include 'partials/sos_controls.html' %}
+  <div class="mobile-emergency-bar" aria-label="Emergency call shortcut">
+    <p><strong>Need urgent help?</strong>Call emergency services.</p>
+    <div class="mobile-bar-actions">
+      {% include 'partials/sos_button.html' with compact=True only %}
+      <a href="tel:112" class="btn btn-primary">
+        {% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Call 112
+      </a>
+    </div>
+  </div>
+  <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}" defer></script>
+  <script src="{% static 'js/site.js' %}?v=20261112a" defer></script>
+  <script src="{% static 'js/sos.js' %}?v=20261112a" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

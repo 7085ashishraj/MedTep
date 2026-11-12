@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ guide.title }} | MEDTAP{% endblock %}
+{% block content %}
+<section class="firstaid-section"><div class="container firstaid-reading">
+  <a class="back-link" href="{% url 'firstaid:guide_list' %}">All first-aid guides</a>
+  <header class="firstaid-heading"><div><p class="eyebrow">{{ guide.audience }}</p><h1>{{ guide.title }}</h1><p>{{ guide.summary }}</p></div><span class="action-icon">{% include 'partials/icon.html' with name=icon class_name='icon-lg' only %}</span></header>
+  <p class="firstaid-review-line">Educational summary · Source checked {{ guide.source_checked_on|date:'d M Y' }} · {% if guide.reviewed_on %}Clinical review recorded {{ guide.reviewed_on|date:'d M Y' }}{% else %}Clinical review of this summary is not recorded{% endif %}</p>
+  <div class="sos-critical-note"><strong>Get help first.</strong> {% if guide.urgent_advice %}{{ guide.urgent_advice }}{% else %}Call 112 for a medical emergency and follow the dispatcher.{% endif %}<a href="tel:112">{% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Call 112</a></div>
+  {% if guide.warnings %}<aside class="firstaid-caution" aria-labelledby="guide-caution-heading"><h2 id="guide-caution-heading">Before you act</h2><p>{{ guide.warnings }}</p></aside>{% endif %}
+  <ol class="firstaid-step-list" aria-label="First-aid steps">{% for step in guide.steps.all %}<li><span class="firstaid-step-number" aria-hidden="true">{{ step.position|stringformat:'02d' }}</span><div><h2>{% if step.heading %}{{ step.heading }}{% else %}Step {{ step.position }}{% endif %}</h2><p>{{ step.instruction }}</p></div></li>{% endfor %}</ol>
+  <section class="firstaid-sources" aria-labelledby="guide-source-heading"><p class="eyebrow">Read the full guidance</p><h2 id="guide-source-heading">Sources &amp; review status</h2><p>Source checked {{ guide.source_checked_on|date:'d M Y' }}. {% if guide.reviewed_on %}Clinical review recorded {{ guide.reviewed_on|date:'d M Y' }}.{% else %}<strong>Clinical review of this summary is not recorded.</strong>{% endif %}</p><ul>{% for source in sources %}<li><a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.label }} — original guidance {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</a></li>{% endfor %}</ul><p class="field-help">MEDTAP's brief text is an original educational summary, not an endorsement by the linked organisations. Some original sources refer to UK numbers; use 112 for emergencies in India.</p></section>
+  <a class="btn btn-outline-primary" href="{% url 'firstaid:helplines' %}">Emergency helplines {% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %}</a>
+</div></section>
+{% endblock %}
