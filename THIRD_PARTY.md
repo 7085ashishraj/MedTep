@@ -52,6 +52,6 @@ does not distribute a Framer template or its source assets.
 
 `static/img/care-professional-v2.png` is an original AI-generated illustrative
 portrait made with the built-in imagegen tool. It is not a listed provider or a
-depiction of an identified doctor. The prompt and asset details are recorded in
-UI_REDESIGN.md. Framer preview images in the ignored tooling cache were used only
-for reference and are not served by the app.
+depiction of an identified doctor. It illustrates a healthcare professional in
+blue scrubs in a bright hospital corridor. Framer reference screenshots are not
+distributed with the project or served by the app.

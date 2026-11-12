@@ -1,195 +1,174 @@
 # MEDTAP — Medical Emergency App
 
-The project now has its configuration, data models, home page, registration,
-login/logout, medical profiles, emergency-contact management, facility admin,
-nearby facility search, a read-only facility API, private SOS location sharing,
-project ambulance requests with an operator queue, adult first-aid guides and
-source-checked Indian helpline references.
-Start with [STEP_1.md](STEP_1.md) for the original setup, then read
-[UI_REDESIGN.md](UI_REDESIGN.md) for the current Framer-inspired UI and complete
-updated code. [UI_STEP_1.md](UI_STEP_1.md) preserves the earlier UI version.
-The guides contain file-by-file code, commands and viva explanations. The latest
-account feature is documented in [STEP_2.md](STEP_2.md), including all current
-shared-style/template changes and the account tests.
+A mobile-friendly Django project for finding nearby healthcare facilities,
+maintaining a private medical profile and sharing an emergency location.
 
-Step 4 is complete: [STEP_4.md](STEP_4.md) contains the current search code,
-Haversine explanation, API examples, Leaflet setup and verification steps.
-[STEP_3.md](STEP_3.md) covers the facility admin and fake sample-data command.
-Step 5 is complete: [STEP_5.md](STEP_5.md) explains SOS capture, retry protection,
-private saved requests and manual WhatsApp/SMS sharing. It contains complete current
-files, commands and viva notes. Step 6 is complete: [STEP_6.md](STEP_6.md) contains
-the ambulance workflow, operator permissions, status history, migration and current
-shared files. Step 7 is complete: [STEP_7.md](STEP_7.md) covers the first-aid library,
-helplines, admin editing, public APIs and source metadata. Medical provenance and
-scope are documented in [FIRST_AID_SOURCES.md](FIRST_AID_SOURCES.md).
-Step 8 is complete: [STEP_8.md](STEP_8.md) contains the current shared UI files,
-mobile overflow fixes, keyboard navigation, password visibility controls,
-script-free fallbacks and branded error pages. It includes full copy-paste code,
-commands, browser verification and viva notes. Step 9 is complete:
-[STEP_9.md](STEP_9.md) adds cross-app workflows with CSRF checks, database-invariant
-tests and one command for project verification. It includes complete new source,
-a coverage inventory and viva notes. Deployment is Step 10, after "next".
+**This app does not replace calling 112.** SOS sharing is manual. Ambulance
+requests are project records; no real dispatch service is connected.
 
-The current design uses Mediso from Framer Marketplace as its main reference:
-spacious typography, a photo-led hero, integrated search, clear service cards and
-a dark footer. The implementation and illustrative portrait are original.
+## Features
 
-Run from PowerShell in this directory:
+- Registration, login, private medical profiles and emergency contacts.
+- Hospital, clinic, pharmacy and blood-bank management through Django admin.
+- Nearby facility search with Haversine distance, filters and a Leaflet map.
+- Saved SOS location snapshots with WhatsApp/SMS share links and copy fallback.
+- Project ambulance requests, operator permissions and a recorded status timeline.
+- Adult first-aid summaries and Indian helpline references with source metadata.
+- Responsive Bootstrap UI and small read-only REST APIs.
+
+## Requirements
+
+- Python 3.12 or newer; this project has been tested with Python 3.14.
+- Packages pinned in `requirements.txt`: Django, Django REST Framework and python-decouple.
+- SQLite for local development. PostgreSQL/PostGIS support is not configured yet.
+- Node.js on PATH only if running the JavaScript checks.
+
+Bootstrap, Bootstrap Icons and Leaflet are included locally. Internet access is
+needed for OpenStreetMap tiles and Google Fonts; the font has a system fallback.
+Browser location access works on localhost or HTTPS and requires permission.
+
+## Local setup
+
+Clone the repository, or extract its ZIP and open the project folder:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py runserver
+git clone https://github.com/7085ashishraj/MedTep.git MEDTAP
+cd MEDTAP
 ```
 
-Run all project checks with the same virtual environment (Node.js must be on PATH):
+In PowerShell, create the environment, install dependencies and create your local
+configuration. Run the copy command only when setting up a new `.env`:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Paste the generated value after `DJANGO_SECRET_KEY=` in `.env`. Keep it private.
+The example also defines `DJANGO_DEBUG=True` and local `DJANGO_ALLOWED_HOSTS`
+for development. `.env`, databases, virtual environments and caches are ignored
+by Git. Never commit actual credentials or patient data.
+
+On macOS/Linux, use `python3 -m venv .venv`, `.venv/bin/python` instead of
+`.\.venv\Scripts\python.exe`, and `cp .env.example .env` instead of `Copy-Item`.
+Select the virtual-environment interpreter in VS Code.
+
+Create the database and an admin account, then start the development server:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py createsuperuser
+.\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+```
+
+Open [MEDTAP](http://127.0.0.1:8000/) or [Django admin](http://127.0.0.1:8000/admin/).
+Ordinary registration does not grant admin or operator access.
+
+### Optional sample content
+
+Run these in another terminal from the project folder:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py seed_demo_facilities
+.\.venv\Scripts\python.exe manage.py seed_firstaid
+```
+
+The facility command creates eight clearly labelled FAKE facilities, seven active,
+with synthetic coordinates and dummy phone `0000000000`. Their call/directions
+actions are disabled. Choose **Try demo location** on the facility page to browse
+them. Neither command creates users or patient records.
+
+The first-aid command supplies five adult educational guides and three official
+helpline references. Sources were checked on 12 November 2026; clinical review of
+the app's summaries is not recorded. Re-seeding preserves existing edits and does
+not claim a fresh source check. See [source notes](FIRST_AID_SOURCES.md).
+
+### Operator access
+
+```powershell
+.\.venv\Scripts\python.exe manage.py setup_ambulance_operators
+```
+
+This creates the **Ambulance operators** group without assigning or promoting
+users. A superuser can use the operator dashboard immediately. For another
+operator, assign that group and enable **Staff status** through admin. Both view
+and change ambulance permissions are required.
+
+Operators advance requests through Requested → Accepted → On the way → Completed.
+Status changes record an actor/time; stale edits are rejected. Internal operator
+notes are excluded from the owner's status response. No provider is contacted.
+
+## Main pages and APIs
+
+| Page | Path |
+| --- | --- |
+| Create account / login | `/accounts/register/` · `/accounts/login/` |
+| Private medical profile | `/accounts/profile/` |
+| Facility search | `/facilities/` |
+| Private SOS page | `/emergency/sos/` |
+| Your transport requests | `/emergency/ambulance/` |
+| Operator queue | `/emergency/operators/ambulances/` |
+| First-aid library / helplines | `/first-aid/` · `/first-aid/helplines/` |
+
+Public read-only JSON endpoints:
+
+```text
+/facilities/api/nearby/?latitude=12.97&longitude=77.59&radius_km=5
+/first-aid/api/guides/
+/first-aid/api/guides/adult-cpr/
+/first-aid/api/helplines/
+```
+
+## Verification
+
+Run all project checks with the project's Python interpreter and Node.js on PATH:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/check_project.py
 ```
 
-This checks configuration, migration drift, all Django tests and all four
-JavaScript check files. It stops on failure. Test settings use a generated
-temporary signing key in child processes; your `.env` and running server are
-unchanged. Test records use Django's separate test database.
+This runs Django system checks, migration drift detection, **192 Django tests**
+and **38 JavaScript checks**, stopping on failure. Tests use a separate test
+database and temporary child-process settings; your `.env` is unchanged.
 
-Open **http://127.0.0.1:8000/** for the home page. The built-in Django admin remains
-at **http://127.0.0.1:8000/admin/**. Choose the .venv interpreter in VS Code.
-
-- Create an account: **http://127.0.0.1:8000/accounts/register/**
-- Login: **http://127.0.0.1:8000/accounts/login/**
-- Your private medical profile: **http://127.0.0.1:8000/accounts/profile/**
-
-Registration creates a medical profile and signs you in. Save medical details,
-then add/edit/remove emergency contacts and choose a primary contact. Sign out
-uses a CSRF-protected POST. Email is optional and login uses your username.
-If registration is rejected, the focused error summary says the account was not
-created and lists the exact field errors. Correct them before trying to log in.
-
-Run the account tests:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py test accounts
-```
-
-Facility admin: **http://127.0.0.1:8000/admin/facilities/facility/**. Use a superuser
-or a staff account with the relevant permissions; ordinary registration does not
-grant admin access. Create an admin account if needed:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py createsuperuser
-```
-
-The facility migration has been applied and eight FAKE facilities are seeded.
-To add any missing demo records again while preserving existing edits:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py seed_demo_facilities
-.\.venv\Scripts\python.exe manage.py test facilities accounts
-```
-
-Find facilities at **http://127.0.0.1:8000/facilities/**. Use **Try demo location**
-to see seven active FAKE samples sorted by approximate distance. Filter by type,
-speciality, 24×7 flag and an optional distance radius. Name/address search works
-without JavaScript or location permission. Coordinates can also be entered manually.
-The map and list show the same page of up to 20 results. FAKE records have no call
-or directions actions. Ordinary entries are not independently verified by MEDTAP.
-
-Read-only JSON API (no login required):
-**http://127.0.0.1:8000/facilities/api/nearby/?latitude=12.97&longitude=77.59&radius_km=5**.
-It uses the same validation, filters and distance calculation as the HTML page.
-
-```powershell
-.\.venv\Scripts\python.exe manage.py test facilities accounts
-node facilities/frontend_tests.cjs
-node emergency/frontend_tests.cjs
-node emergency/ambulance_frontend_tests.cjs
-node core/ui_frontend_tests.cjs
-```
-
-There are 192 Django tests and 38 isolated frontend checks (9 search, 12 SOS,
-8 ambulance, 9 shared UI). Run the full suite to include the shared UI tests:
+To run the Django suite alone:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py test
 ```
 
-Node is needed only for frontend checks, not to run Django. No new model migration
-is needed in Steps 4, 5, 8 or 9. Step 6 adds a version field and status-event model:
+## Project structure
 
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py setup_ambulance_operators
+```text
+accounts/       Authentication, medical profiles and contacts
+common/         Shared model and validation utilities
+config/         Django settings and root routes
+core/           Home page, shared UI and cross-app tests
+emergency/      SOS records and project ambulance workflow
+facilities/     Directory, search, admin and API
+firstaid/       Educational guides, helplines, admin and API
+scripts/        Project verification command
+static/         Styles, scripts, images and vendored assets/licenses
+templates/      Shared layout and application pages
 ```
 
-The migration is applied and the operator group is created. No existing user has
-been assigned to it or promoted. A superuser can use the dashboard immediately.
-For a separate operator, use the admin Users page to assign **Ambulance operators**
-and enable **Staff status**. Both view/change ambulance permissions and staff
-status are required; ordinary accounts cannot use the queue.
+## Scope and privacy
 
-- Your transport requests: **http://127.0.0.1:8000/emergency/ambulance/**
-- Operator queue: **http://127.0.0.1:8000/emergency/operators/ambulances/**
+Facility distances are approximate; listings do not confirm beds, stock or
+emergency capacity. Helplines 108/102 have state/UT-dependent coverage, documented
+on the helpline page. First-aid summaries do not replace professional training.
 
-Choose a saved active SOS location, review it, and submit one project request.
-Operators move it Requested → Accepted → On the way → Completed. Status events
-record the actor and time; stale forms return a conflict instead of overwriting
-newer edits. The owner page checks status every 10 seconds while visible, stops
-on completion/errors, and also has a manual refresh link. Internal operator notes
-are never included in the owner's status response. Existing pre-Step-6 records
-have no invented event history. SOS and ambulance lifecycles remain separate.
+SOS requires sign-in and saves a location snapshot, not live tracking. Users
+choose recipients and send messages themselves in WhatsApp/SMS. Medical-profile
+details are not inserted into share messages. Search coordinates appear in GET
+URLs and may enter browser history/server logs; map tile requests reveal the
+viewed area to the map provider. Stored SOS coordinates remain until removed.
 
-This is a project queue, not a connected dispatch service. No real provider is
-contacted. A facility reference does not verify an ambulance or provider capacity;
-FAKE references stay labelled as samples. Call 112 in a real emergency.
+This repository contains a local-development project. Production hosting,
+HTTPS/security settings and a data-retention policy require separate preparation.
+Deployment is not configured yet.
 
-First-aid library: **http://127.0.0.1:8000/first-aid/**. It has five adult educational
-summaries: CPR, severe external bleeding, burns/scalds, choking and recovery position.
-Sources were checked on **12 November 2026**. Clinical review of our summaries is
-not recorded, and the pages say so. Original references are linked from every guide.
-
-Helplines: **http://127.0.0.1:8000/first-aid/helplines/**. The cards distinguish
-nationwide 112 from state/UT-dependent 108 and 102, with 102 described as patient
-transport. No live test calls were made. To recreate missing seeded content:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py seed_firstaid
-```
-
-The Step 7 migration and seed are already applied. Re-seeding preserves edits and
-does not automatically update dates or republish records. Public views/APIs hide
-unpublished, undated, future-dated, empty or unsourced guides, and inactive or
-unverified helplines. Manage content through the Firstaid section of Django admin.
-
-Public read-only APIs:
-
-- `/first-aid/api/guides/` — search/paginated catalogue
-- `/first-aid/api/guides/adult-cpr/` — ordered steps and source/review metadata
-- `/first-aid/api/helplines/` — number, coverage, check date and call link
-
-The home page includes the disclaimer **"This app does not replace calling 112."**
-SOS is available at **http://127.0.0.1:8000/emergency/sos/** after signing in.
-On any page, a signed-in user's SOS button requests a fresh browser location,
-saves an EmergencyRequest using a CSRF-protected POST, and opens a private sharing
-screen. You choose a recipient and press Send in WhatsApp/SMS yourself; the app
-does not send messages, confirm delivery or book an ambulance. Manual coordinate
-entry and message copying provide fallbacks. Requests are location snapshots,
-not live tracking. A retry from the same button uses the same request ID.
-Other users cannot view a request even if they know its URL. No medical details
-are inserted into the share message. The stored location remains in SQLite until
-removed; a production retention policy is part of later deployment work.
-
-Directory search still sends coordinates in GET URLs, which may appear in history
-and server logs. Search does not save them to a profile or emergency record. SOS
-explicitly stores them with the signed-in account through POST. Map tile requests
-reveal the viewed area to OpenStreetMap. Internet access is required for map tiles.
-
-The eight sample facilities have FAKE names/addresses, synthetic coordinates, a
-read-only demo identifier and the dummy phone 0000000000. They are learning data.
-The facility command seeds no patient data, first-aid instructions or helpline
-records; `seed_firstaid` supplies the separately documented educational content.
-The visible
-112 call shortcut is an ordinary telephone link, independent of the app's database.
-
-See [THIRD_PARTY.md](THIRD_PARTY.md) for asset versions, licenses and references.
+See [FIRST_AID_SOURCES.md](FIRST_AID_SOURCES.md) for medical-content provenance and
+[THIRD_PARTY.md](THIRD_PARTY.md) for asset licenses and references.
