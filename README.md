@@ -69,6 +69,73 @@ use `FACILITIES_OVERPASS_METHOD=POST`. Public services may throttle or time out;
 the UI reports this and keeps Call 112 available. No automatic bulk harvesting,
 polling or geocoding service is configured.
 
+### Adding an API-key provider later
+
+**OpenStreetMap remains active.** No paid account, API key or Google integration
+is needed now. There are two possible future routes:
+
+**1. Keep OpenStreetMap + Leaflet with a managed Overpass provider.**
+
+- Choose a provider that accepts Overpass queries and returns the standard OSM
+  `elements` JSON. Confirm its coverage, limits, billing and attribution terms.
+- Obtain the complete HTTPS interpreter URL and the authentication instructions
+  from that provider. If its key is embedded in the URL path, keep that full URL
+  private in `.env` as `FACILITIES_OVERPASS_URL`. Set
+  `FACILITIES_OVERPASS_METHOD=GET` or `POST` as instructed by the provider.
+- The existing adapter supports a key in the URL path. It currently rejects
+  query-string credentials and does not send provider-specific authentication
+  headers. A provider requiring either needs a small adapter change first.
+- Restart Django and test one nearby search. Endpoint-specific cache keys keep
+  the previous provider's cached data separate. Check source links, all four
+  categories, missing details and error handling before opening access to users.
+
+Do not substitute a Google Places URL into `FACILITIES_OVERPASS_URL`: the request
+and response formats differ. Keeping the same OpenStreetMap data format is what
+allows the existing Leaflet interface to continue working.
+
+**2. Switch to Google Places API (New).**
+
+1. Create/select a project in [Google Cloud Console](https://console.cloud.google.com/),
+   link billing and enable **Places API (New)**. Review current usage pricing,
+   set appropriate API quotas and configure [budget alerts](https://cloud.google.com/billing/docs/how-to/budgets).
+   Alerts alone do not impose a hard spending cap. Follow [Google's setup guide](https://developers.google.com/maps/documentation/places/web-service/get-api-key).
+2. Create a dedicated server API key. Restrict it to the required API and, when
+   your deployment has fixed outbound IP addresses, restrict it to those server
+   IPs. A browser key for a future Google Map should be separate and restricted
+   to your website origins. Follow [Google's key security guidance](https://developers.google.com/maps/api-security-best-practices).
+3. Save the server key only in your local ignored `.env` or your host's secret
+   settings. The intended future variable is:
+
+   ```dotenv
+   GOOGLE_PLACES_API_KEY=your_private_key_here
+   ```
+
+   **This variable is not read by the current application. Adding it alone does
+   not activate Google Places.** Never paste a real key into README, templates,
+   client-side scripts, screenshots or Git. The browser map key has a different
+   role and must not reuse the server key.
+4. Add a separate backend provider adapter, loading that variable with decouple.
+   Google [Nearby Search (New)](https://developers.google.com/maps/documentation/places/web-service/nearby-search)
+   uses POST JSON to `https://places.googleapis.com/v1/places:searchNearby`, with
+   `X-Goog-Api-Key` and a deliberately small `X-Goog-FieldMask`. It cannot reuse
+   our Overpass query. Map Google types/fields into our facility response and
+   validate category coverage against the [current type list](https://developers.google.com/maps/documentation/places/web-service/place-types).
+   Do not assume every MEDTAP category, speciality or phone field is returned.
+5. Update the UI, attribution, privacy information and caching for that provider.
+   Under [Google's Places policies](https://developers.google.com/maps/documentation/places/web-service/policies),
+   Places results shown on a map must use a Google Map; results without a map
+   still need the required attribution. Do not plot Google Places results on
+   our current OSM/Leaflet map or copy them into our OSM snapshot cache. Use only
+   storage/caching explicitly allowed by the applicable terms.
+6. Add mocked adapter tests for success, missing fields, denied keys, quota
+   errors and outages; then make a deliberate small live test and run
+   `scripts/check_project.py`. Enable the provider only after those changes are
+   implemented and reviewed. An API key does not verify stock, beds or dispatch.
+
+No Google adapter, account, key or paid request has been created by this project.
+When you decide to switch, specify the provider; its integration can then be
+implemented without sharing your actual key in chat.
+
 ## Local setup
 
 Clone the repository, or extract its ZIP and open the project folder:
