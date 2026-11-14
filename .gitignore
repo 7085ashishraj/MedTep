@@ -1,6 +1,7 @@
 .venv/
 .python/
 .uv-cache/
+.cache/
 .env
 .env.*
 !.env.example

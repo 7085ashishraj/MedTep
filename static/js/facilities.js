@@ -71,9 +71,26 @@
     }
     if (points.length) map.fitBounds(points, { padding: [32, 32], maxZoom: 14 });
     else map.setView([22.5, 79], 4);
+    const searchArea = document.getElementById("map-area-search");
+    if (searchArea) {
+      searchArea.hidden = false;
+      searchArea.addEventListener("click", () => {
+        const centre = map.getCenter();
+        const form = document.querySelector("[data-location-form]");
+        if (!form || !Number.isFinite(centre.lat) || !Number.isFinite(centre.lng)) return;
+        form.elements.namedItem("latitude").value = Math.max(-90, Math.min(90, centre.lat)).toFixed(6);
+        // Leaflet can wrap the world; normalise its longitude to the accepted range.
+        form.elements.namedItem("longitude").value = (((centre.lng + 180) % 360 + 360) % 360 - 180).toFixed(6);
+        const manual = form.querySelector("[data-manual-location]");
+        if (manual) manual.open = true;
+        form.requestSubmit();
+      });
+    }
     feedback.textContent = data.results.length
       ? "Map ready. Select a numbered pin to see its facility."
-      : "No facilities match this search. Try widening your filters.";
+      : !data.origin ? "Choose a search location to find nearby facilities."
+        : data.search?.status === "unavailable" ? "Directory lookup unavailable. Please retry shortly; this does not mean there are no facilities nearby."
+          : "No mapped facilities match this search. Try widening your filters; map coverage may be incomplete.";
 
     document.querySelectorAll("[data-show-on-map]").forEach((button) => {
       const marker = markers.get(button.dataset.showOnMap);

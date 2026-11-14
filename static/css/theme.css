@@ -602,6 +602,9 @@ button, .btn, .form-control, .form-select { min-height: 44px; }
   .firstaid-step-list h2 { font-size: 1.2rem; }
 }
 /* Shared accessibility and small-screen finishing details. */
+.finder-source-note, .facility-source { overflow-wrap: anywhere; color: var(--muted); font-size: .85rem; }
+.facility-source a { display: inline-flex; align-items: center; min-height: 44px; }
+.map-area-search { margin: 0 1rem 1rem; }
 .password-control { display: flex; align-items: stretch; }
 .password-control > .form-control { min-width: 0; width: 1%; flex: 1; border-radius: .6rem 0 0 .6rem; }
 .password-toggle { min-width: 64px; min-height: 48px; border: 1px solid var(--control-border); border-left: 0; border-radius: 0 .6rem .6rem 0; background: var(--blue-soft); color: var(--primary-dark); font-size: .9rem; padding: .5rem .8rem; }

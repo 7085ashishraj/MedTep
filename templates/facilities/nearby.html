@@ -9,7 +9,7 @@
       <div><p class="eyebrow">Care around you</p><h1>A clearer path.<br>A little closer.</h1><p>Explore hospitals, clinics, pharmacies and blood banks in one place.</p></div>
       <a class="btn btn-outline-primary" href="tel:112">{% include 'partials/icon.html' with name='telephone' class_name='icon-sm' only %} Urgent? Call 112</a>
     </header>
-    <div class="finder-notice">{% include 'partials/icon.html' with name='info-circle' only %}<p><strong>A directory, not live availability.</strong> Listed hours and specialities do not confirm beds, medicines, blood stock or emergency capacity. FAKE samples are for learning only.</p></div>
+    <div class="finder-notice">{% include 'partials/icon.html' with name='info-circle' only %}<p><strong>Real places, with source details.</strong> Search OpenStreetMap and locally managed listings near your location. Call ahead: mapped details do not confirm opening now, beds, medicines, blood stock or emergency capacity.</p></div>
     <form method="get" action="{% url 'facilities:nearby' %}" class="finder-filter-panel" data-location-form role="search" aria-label="Find facilities">
       {% include 'partials/form_errors.html' with form=form error_heading='Please check your search' only %}
       <div class="finder-filters">
@@ -29,9 +29,8 @@
       <div class="finder-location">
         <div class="finder-location-actions">
           {% include 'partials/location_button.html' %}
-          <a class="btn btn-outline-primary" href="{% url 'facilities:nearby' %}?latitude=12.970000&amp;longitude=77.590000&amp;radius_km=5">Try demo location</a>
         </div>
-        <p id="location-feedback" class="location-feedback" role="status" aria-live="polite" aria-atomic="true">{% if has_location %}Distances are measured from the coordinates below.{% else %}Add a location for distance sorting, or browse by name and address.{% endif %}</p>
+        <p id="location-feedback" class="location-feedback" role="status" aria-live="polite" aria-atomic="true">{% if has_location %}Distances are measured from your search coordinates. A new area may take a few seconds to load.{% else %}Choose Use my location to find real facilities nearby, or enter a search location below. Name and address filter listings within that area.{% endif %}</p>
         <details data-manual-location{% if form.latitude.errors or form.longitude.errors or has_location or form.non_field_errors %} open{% endif %}>
           <summary>Enter or check coordinates</summary>
           <div class="manual-location-fields">
@@ -40,20 +39,23 @@
             {% endif %}{% endfor %}
             <button type="submit" class="btn btn-outline-primary">Apply coordinates</button>
           </div>
-          <p class="field-help">Demo centre: latitude 12.970000, longitude 77.590000. This is a synthetic test location, not your location. Text search matches stored names, addresses and specialities; it does not convert place names into coordinates.</p>
+          <p class="field-help">Enter a location's latitude and longitude if GPS is unavailable. You can copy coordinates from your map app. Name/address is a listing filter, not a city-to-coordinate lookup.</p>
         </details>
-        <p class="finder-privacy">Location is requested only when you tap the button. Search coordinates are sent to this server in the URL and may appear in browser history and server logs; they are not saved to your profile. The map provider receives requests for the area you view.</p>
+        <p class="finder-privacy">GPS is requested only when you tap the button. Coordinates appear in this site's search URL and may enter history/logs. A rounded area centre (about 1 km precision) is sent through our server to the <a href="{{ directory_provider_url }}" target="_blank" rel="noopener noreferrer">directory provider</a>; no account or medical details are sent. Area results are cached, not saved to your profile. Map tile requests reveal the area viewed.</p>
       </div>
     </form>
     {% if not form.errors %}
+    {% if search_metadata.message %}<div class="alert alert-warning" role="status">{{ search_metadata.message }} {% if search_metadata.status == 'stale' %}Showing previously retrieved listings below; check the retrieval time and call to confirm details.{% endif %}</div>{% endif %}
+    {% if search_metadata.retrieved_at %}<p class="finder-source-note">Directory: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors · ODbL</a> · Retrieved {{ search_metadata.retrieved_at }}{% if search_metadata.status == 'cached' %} · Cached area results (up to 15 minutes){% elif search_metadata.status == 'stale' %} · Older cached results (up to 24 hours){% endif %}. Search radius: {{ search_metadata.radius_km }} km. Missing details stay unknown.</p>{% endif %}
+    {% if search_metadata.truncated %}<div class="alert alert-warning">This area reached the provider result limit. The list may be incomplete; reduce the radius to refine your search.</div>{% endif %}
     <div class="finder-results-heading" id="results-heading">
-      <div><h2 id="results-title">{{ page_obj.paginator.count }} facilit{{ page_obj.paginator.count|pluralize:'y,ies' }} found</h2><p>{% if has_location %}Nearest first · Approximate straight-line distance, not travel time.{% else %}A–Z · Add a location to see the nearest facilities first.{% endif %}</p></div>
+      <div><h2 id="results-title">{% if search_metadata.status == 'unavailable' and not page_obj.paginator.count %}Directory lookup unavailable{% else %}{{ page_obj.paginator.count }} facilit{{ page_obj.paginator.count|pluralize:'y,ies' }} found{% endif %}</h2><p>{% if has_location %}Nearest mapped results first · Approximate straight-line distance, not travel time.{% else %}Choose your location to search the live directory. Locally managed listings appear below when available.{% endif %}</p></div>
       <a class="finder-reset" href="#facility-map-heading">Go to map {% include 'partials/icon.html' with name='arrow-down' class_name='icon-sm' only %}</a>
     </div>
     <div class="finder-layout">
       <section class="facility-list" aria-labelledby="results-title">
         {% for match in page_obj %}{% include 'partials/facility_card.html' with match=match number=forloop.counter only %}{% empty %}
-        <div class="finder-empty"><span class="action-icon">{% include 'partials/icon.html' with name='search' class_name='icon-lg' only %}</span><h3>No matches this time.</h3><p>Try a different type or speciality, widen the distance, or clear your filters. The FAKE samples are near the demo location.</p><a class="btn btn-outline-primary" href="{% url 'facilities:nearby' %}">Browse all facilities</a></div>
+        <div class="finder-empty"><span class="action-icon">{% include 'partials/icon.html' with name='search' class_name='icon-lg' only %}</span><h3>{% if not has_location %}Where would you like to search?{% elif search_metadata.status == 'unavailable' %}We couldn't check this area yet.{% else %}No matches this time.{% endif %}</h3><p>{% if not has_location %}Use the location button above, or enter coordinates to find hospitals, clinics, pharmacies and blood banks around you.{% elif search_metadata.status == 'unavailable' %}Please retry shortly. A provider outage does not mean there are no facilities nearby. Call 112 for urgent help.{% else %}Try another type, remove the speciality or 24×7 filter, or increase the radius up to 25 km. Map coverage varies; no result does not prove no facility exists.{% endif %}</p></div>
         {% endfor %}
         {% if page_obj.paginator.num_pages > 1 %}
         <nav class="finder-pagination" aria-label="Search result pages">
@@ -64,11 +66,13 @@
         {% endif %}
       </section>
       <section class="finder-map-panel" aria-labelledby="facility-map-heading">
-        <div class="finder-map-heading"><h2 id="facility-map-heading">A view of your search</h2><p>Numbered pins match the cards on this page. FAKE pins are labelled Demo.</p></div>
+        <div class="finder-map-heading"><h2 id="facility-map-heading">A view of your search</h2><p>Numbered pins match the cards on this page. Select a card for phone, directions and listing source.</p></div>
+        <button type="button" class="btn btn-outline-primary map-area-search" id="map-area-search" hidden>Search this map area</button>
+        <p class="map-feedback">You can pan and zoom the map, then search its centre without sharing your device's location.</p>
         <div id="facility-map" class="facility-map" aria-label="Facility locations; the same information is available in the list"></div>
         <p id="map-feedback" class="map-feedback" role="status" aria-live="polite">Loading the map… The list remains available below or alongside it.</p>
         <noscript><p class="map-feedback">Enable JavaScript to see the map. All facility details are available in the list.</p></noscript>
-        <div class="map-legend"><span><i class="legend-dot" aria-hidden="true"></i> Facility</span><span><i class="legend-dot legend-demo" aria-hidden="true"></i> FAKE sample</span><span><i class="legend-dot legend-origin" aria-hidden="true"></i> Search location</span></div>
+        <div class="map-legend"><span><i class="legend-dot" aria-hidden="true"></i> Facility</span><span><i class="legend-dot legend-origin" aria-hidden="true"></i> Search location</span></div>
         <p class="map-credit">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener">Report a map issue</a></p>
       </section>
     </div>
@@ -79,6 +83,6 @@
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'vendor/leaflet/leaflet.js' %}" defer></script>
-<script src="{% static 'js/location.js' %}" defer></script>
-<script src="{% static 'js/facilities.js' %}" defer></script>
+<script src="{% static 'js/location.js' %}?v=20261114b" defer></script>
+<script src="{% static 'js/facilities.js' %}?v=20261114b" defer></script>
 {% endblock %}

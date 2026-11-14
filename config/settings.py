@@ -78,6 +78,22 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Real facility discovery. Admin-entered ordinary facilities are included too.
+FACILITIES_LIVE_ENABLED = env("FACILITIES_LIVE_ENABLED", default=True, cast=bool)
+FACILITIES_OVERPASS_URL = env(
+    "FACILITIES_OVERPASS_URL", default="https://overpass-api.de/api/interpreter",
+)
+FACILITIES_OVERPASS_METHOD = env("FACILITIES_OVERPASS_METHOD", default="GET").upper()
+FACILITIES_LOCK_DIR = BASE_DIR / ".cache" / "overpass.lock"
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "facilities": {
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": BASE_DIR / ".cache" / "facilities",
+        "OPTIONS": {"MAX_ENTRIES": 300},
+    },
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",

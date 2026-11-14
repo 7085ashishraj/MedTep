@@ -10,7 +10,7 @@ requests are project records; no real dispatch service is connected.
 
 - Registration, login, private medical profiles and emergency contacts.
 - Hospital, clinic, pharmacy and blood-bank management through Django admin.
-- Nearby facility search with Haversine distance, filters and a Leaflet map.
+- Real OpenStreetMap facility discovery with Haversine distance, filters and a Leaflet map.
 - Saved SOS location snapshots with WhatsApp/SMS share links and copy fallback.
 - Project ambulance requests, operator permissions and a recorded status timeline.
 - Adult first-aid summaries and Indian helpline references with source metadata.
@@ -26,6 +26,48 @@ requests are project records; no real dispatch service is connected.
 Bootstrap, Bootstrap Icons and Leaflet are included locally. Internet access is
 needed for OpenStreetMap tiles and Google Fonts; the font has a system fallback.
 Browser location access works on localhost or HTTPS and requires permission.
+
+## Real facility search
+
+Choose **Use my location** on the home or facility page to request a fresh browser
+position. The app searches OpenStreetMap for hospitals, clinics, pharmacies and
+blood banks around that location, merges ordinary admin-entered facilities and
+sorts by approximate straight-line distance. No location is hardcoded or generated.
+You can also pan/zoom the map and choose **Search this map area**, or enter coordinates.
+Name/address text filters listings in the chosen area; it does not geocode cities.
+
+Cards show the original listing source, available phone/directions links and
+mapped opening hours. Missing details stay unknown; 24×7 means the source explicitly
+lists `24/7`, not that the facility has been contacted or is confirmed open now.
+OSM coverage and tagging vary, including for blood banks and specialities.
+Fake sample facilities are excluded from normal public search, HTML and API.
+
+Live search is enabled by default and needs no API key. Optional `.env` settings:
+
+```dotenv
+FACILITIES_LIVE_ENABLED=True
+FACILITIES_OVERPASS_URL=https://overpass-api.de/api/interpreter
+FACILITIES_OVERPASS_METHOD=GET
+```
+
+The default radius is 5 km, adjustable from 0.1–25 km. A rounded area centre
+(approximately 1 km precision) goes to the directory provider, without account,
+contact or medical details. Area responses are cached for 15 minutes in ignored
+`.cache/`; an outage can use explicitly labelled snapshots up to 24 hours old.
+Retrieval time is shown. With no cached or locally managed results, a provider
+failure returns HTTP 503 instead of falsely reporting a successful empty search.
+At most 2,000 upstream elements are processed; a limit notice advises refining
+the radius. The API includes `search` metadata and per-listing `source`,
+`source_url` and `opening_hours`. OSM IDs are strings such as `osm-node-123`;
+local directory IDs remain integers. OSM records are not silently copied into SQLite.
+
+The shared public Overpass endpoint is for light, manually triggered use. For a
+public launch or dependable capacity, configure a managed or self-hosted provider
+and review its service/privacy terms. See the [Overpass usage guidance](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html).
+The endpoint is configurable without changing code; providers supporting POST can
+use `FACILITIES_OVERPASS_METHOD=POST`. Public services may throttle or time out;
+the UI reports this and keeps Call 112 available. No automatic bulk harvesting,
+polling or geocoding service is configured.
 
 ## Local setup
 
@@ -66,24 +108,20 @@ Create the database and an admin account, then start the development server:
 Open [MEDTAP](http://127.0.0.1:8000/) or [Django admin](http://127.0.0.1:8000/admin/).
 Ordinary registration does not grant admin or operator access.
 
-### Optional sample content
+### Educational content
 
 Run these in another terminal from the project folder:
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py seed_demo_facilities
 .\.venv\Scripts\python.exe manage.py seed_firstaid
 ```
-
-The facility command creates eight clearly labelled FAKE facilities, seven active,
-with synthetic coordinates and dummy phone `0000000000`. Their call/directions
-actions are disabled. Choose **Try demo location** on the facility page to browse
-them. Neither command creates users or patient records.
 
 The first-aid command supplies five adult educational guides and three official
 helpline references. Sources were checked on 12 November 2026; clinical review of
 the app's summaries is not recorded. Re-seeding preserves existing edits and does
 not claim a fresh source check. See [source notes](FIRST_AID_SOURCES.md).
+No facility seed is needed for live search. The fake-facility seed command remains
+available for development tests, and its records are hidden from public search.
 
 ### Operator access
 
@@ -129,9 +167,14 @@ Run all project checks with the project's Python interpreter and Node.js on PATH
 .\.venv\Scripts\python.exe scripts/check_project.py
 ```
 
-This runs Django system checks, migration drift detection, **192 Django tests**
-and **38 JavaScript checks**, stopping on failure. Tests use a separate test
+This runs Django system checks, migration drift detection, **211 Django tests**
+and **41 JavaScript checks**, stopping on failure. Tests use a separate test
 database and temporary child-process settings; your `.env` is unchanged.
+Provider calls are mocked in automated tests. Separately, the real website/API
+was checked against a public Bengaluru city-centre search on 14 November 2026:
+798 listings within 5 km (284 hospitals, 263 clinics, 220 pharmacies, 31 blood
+banks). Those are source listings at that time, not a guarantee of completeness
+or current availability. No personal GPS position, test calls or messages were used.
 
 To run the Django suite alone:
 
@@ -164,7 +207,8 @@ SOS requires sign-in and saves a location snapshot, not live tracking. Users
 choose recipients and send messages themselves in WhatsApp/SMS. Medical-profile
 details are not inserted into share messages. Search coordinates appear in GET
 URLs and may enter browser history/server logs; map tile requests reveal the
-viewed area to the map provider. Stored SOS coordinates remain until removed.
+viewed area to the map provider. Coarse area-query results are cached separately
+from private SOS records. Stored SOS coordinates remain until removed.
 
 This repository contains a local-development project. Production hosting,
 HTTPS/security settings and a data-retention policy require separate preparation.

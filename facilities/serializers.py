@@ -4,7 +4,7 @@ from rest_framework import serializers
 class FacilityMatchSerializer(serializers.Serializer):
     """Only explicit public fields; dummy phone and action URLs are suppressed."""
 
-    id = serializers.IntegerField(source="facility.pk")
+    id = serializers.ReadOnlyField(source="facility.pk")
     name = serializers.CharField(source="facility.name")
     facility_type = serializers.CharField(source="facility.facility_type")
     type_label = serializers.CharField(source="facility.get_facility_type_display")
@@ -20,6 +20,9 @@ class FacilityMatchSerializer(serializers.Serializer):
     phone = serializers.SerializerMethodField()
     call_url = serializers.CharField(allow_null=True)
     directions_url = serializers.CharField(allow_null=True)
+    source = serializers.CharField()
+    source_url = serializers.CharField(allow_null=True)
+    opening_hours = serializers.CharField()
 
     def get_phone(self, match):
-        return None if match.facility.is_demo else match.facility.phone
+        return match.call_url.removeprefix("tel:") if match.call_url else None

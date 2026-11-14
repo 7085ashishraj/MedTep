@@ -3,6 +3,7 @@
   <h3 id="facility-title-{{ match.facility.pk }}">{{ match.facility.name }}</h3>
   <div class="facility-meta">{% if match.distance_km != None %}<span>{% include 'partials/icon.html' with name='geo-alt' class_name='icon-sm' only %} {{ match.distance_km|floatformat:2 }} km away</span>{% else %}<span>Distance needs a location</span>{% endif %}{% if match.facility.is_24x7 %}<span class="facility-hours">Listed as 24×7</span>{% endif %}</div>
   <p class="facility-address">{{ match.facility.address }}</p>
+  <p class="facility-source">{% if match.source_url %}<a href="{{ match.source_url }}" target="_blank" rel="noopener noreferrer">{{ match.source }} listing ↗</a>{% else %}{{ match.source }} listing{% endif %} · {% if match.opening_hours %}Hours: {{ match.opening_hours }}{% else %}Opening hours not provided{% endif %}</p>
   <ul class="facility-specialities" aria-label="Specialities">{% for speciality in match.facility.specialities.all %}<li>{{ speciality.name }}</li>{% empty %}<li>Specialities not listed</li>{% endfor %}</ul>
   {% if match.facility.is_demo %}<p class="facility-demo-note">Learning data. This is not a real healthcare facility.</p>{% endif %}
   <div class="facility-card-actions">

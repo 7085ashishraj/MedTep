@@ -2,7 +2,7 @@ from decimal import Decimal
 from math import pi
 
 from django.core.paginator import InvalidPage
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from .forms import FacilitySearchForm
@@ -26,6 +26,7 @@ class HaversineTests(SimpleTestCase):
         self.assertLess(haversine_km(0, 179.9, 0, -179.9), 23)
 
 
+@override_settings(FACILITIES_LIVE_ENABLED=False)
 class FacilitySearchTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -33,7 +34,6 @@ class FacilitySearchTests(TestCase):
         cls.other_speciality = Speciality.objects.create(name="Demo care two", slug="demo-care-two")
         cls.near = Facility.objects.create(**facility_data(
             name="Z FAKE Near", latitude=0, longitude=0, is_24x7=True,
-            demo_key="near-demo",
         ))
         cls.near.specialities.set([cls.speciality, cls.other_speciality])
         cls.far = Facility.objects.create(**facility_data(
@@ -113,6 +113,7 @@ class FacilitySearchTests(TestCase):
             self.results(page=99)
 
     def test_demo_actions_and_all_zero_phone_are_disabled(self):
+        self.near.demo_key = "test-demo"
         demo = FacilityMatch(self.near, 0)
         self.assertIsNone(demo.call_url)
         self.assertIsNone(demo.directions_url)
@@ -127,10 +128,11 @@ class FacilitySearchTests(TestCase):
         self.assertEqual(match.call_url, "tel:+0000000001")
 
 
+@override_settings(FACILITIES_LIVE_ENABLED=False)
 class NearbyViewsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.demo = Facility.objects.create(**facility_data(demo_key="view-demo", latitude=0, longitude=0))
+        cls.demo = Facility.objects.create(**facility_data(latitude=0, longitude=0))
         cls.hidden = Facility.objects.create(**facility_data(name="Hidden FAKE facility", is_active=False))
 
     def test_public_html_and_api_are_available_without_login(self):
@@ -138,10 +140,10 @@ class NearbyViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.demo.name)
         self.assertNotContains(response, self.hidden.name)
-        self.assertContains(response, "FAKE sample")
+        self.assertNotContains(response, "FAKE sample")
         self.assertContains(response, "This app does not replace calling 112")
         self.assertContains(response, "Call unavailable")
-        self.assertContains(response, "Directions unavailable")
+        self.assertContains(response, "Directions to")
         self.assertNotContains(response, 'href="tel:0000000000"')
         api = self.client.get(reverse("facilities:nearby_api"))
         self.assertEqual(api.status_code, 200)
@@ -158,9 +160,10 @@ class NearbyViewsTests(TestCase):
 
     def test_api_redacts_demo_phone_and_actions_and_excludes_internal_fields(self):
         result = self.client.get(reverse("facilities:nearby_api")).json()["results"][0]
-        for key in ("phone", "call_url", "directions_url", "distance_km"):
+        for key in ("phone", "call_url", "distance_km"):
             self.assertIsNone(result[key])
-        self.assertIs(result["is_demo"], True)
+        self.assertIs(result["is_demo"], False)
+        self.assertTrue(result["directions_url"].startswith("https://www.google.com/maps/dir/"))
         self.assertIsInstance(result["latitude"], (int, float))
         for key in ("demo_key", "created_at", "updated_at", "user", "operator_notes"):
             self.assertNotIn(key, result)
@@ -196,7 +199,7 @@ class NearbyViewsTests(TestCase):
 
     def test_no_matches_is_a_useful_empty_state(self):
         response = self.client.get(reverse("facilities:nearby"), {"q": "no-match"})
-        self.assertContains(response, "No matches this time.")
+        self.assertContains(response, "Where would you like to search?")
         self.assertEqual(response.context["map_data"]["results"], [])
 
     def test_page_links_keep_filters_and_map_only_contains_current_page(self):

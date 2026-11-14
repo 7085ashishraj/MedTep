@@ -18,6 +18,18 @@ made by the server to deliver a message. Users choose whether to open a sharing 
 Core Bootstrap assets are served locally so the layout and navigation do not depend
 on a CDN during use. Keep the supplied licenses when redistributing the project.
 
+Facility listings are queried from OpenStreetMap using Overpass. Displayed source
+links and attribution identify the original records; data is under the
+[OpenStreetMap ODbL](https://www.openstreetmap.org/copyright). Listings, tags and
+mapped hours are not independently verified by MEDTAP. Public queries use a coarse
+area centre and bounded radius, cache responses and avoid simultaneous upstream
+requests. The [public Overpass guidance](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html)
+describes shared capacity and limits; sustained application traffic requires a
+managed or self-hosted provider. The HTTPS endpoint/method can be changed through
+environment settings. The current lookup is informational, not an emergency
+dispatch system or confirmation of facility capacity. No public Nominatim
+geocoding, autocomplete or bulk POI harvesting is used.
+
 - Leaflet 1.9.4 stable: https://leafletjs.com/reference-1.9.4.html — BSD-2-Clause;
   license at `static/vendor/leaflet/LICENSE`. JS, CSS and supporting images are
   vendored from the official `leaflet@1.9.4` npm package via jsDelivr. The beta 2.0

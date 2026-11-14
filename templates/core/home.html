@@ -22,8 +22,8 @@
               </div>
               <button type="submit" class="btn btn-primary">Find care {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</button>
             </div>
-            <div class="home-location-actions">{% include 'partials/location_button.html' %}<a href="{% url 'facilities:nearby' %}">Browse all facilities</a></div>
-            <p class="search-hint" id="search-hint">Search listed names and addresses. For distance sorting, share your location or enter coordinates on the results page. Shared coordinates appear in the search URL and may appear in history and server logs.</p>
+            <div class="home-location-actions">{% include 'partials/location_button.html' %}<a href="{% url 'facilities:nearby' %}">Choose a search area</a></div>
+            <p class="search-hint" id="search-hint">Use my location to search real hospitals, clinics, pharmacies and blood banks around you. The text field filters listings in your search area. A rounded area centre is shared with our directory provider; coordinates also appear in this site's search URL/history.</p>
             <p class="location-feedback" id="location-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
           </form>
           <noscript><p class="search-hint">The location button needs JavaScript. Name and address search still works.</p></noscript>
@@ -77,11 +77,11 @@
       </div>
       <div class="how-steps">
         <div class="simple-step"><span class="step-number" aria-hidden="true">01</span><div><h3>Call for urgent help</h3><p>Use the Call 112 shortcut to reach emergency services directly.</p></div></div>
-        <div class="simple-step"><span class="step-number" aria-hidden="true">02</span><div><h3>Know what's around you</h3><p>Explore facilities on a map and compare approximate distances. FAKE samples are clearly marked.</p></div></div>
+        <div class="simple-step"><span class="step-number" aria-hidden="true">02</span><div><h3>Know what's around you</h3><p>Find real mapped facilities, compare approximate distances and open directions or the original listing.</p></div></div>
         <div class="simple-step"><span class="step-number" aria-hidden="true">03</span><div><h3>Keep your people close</h3><p>Save medical details and emergency contacts in your private account.</p><a class="back-link" href="{% if user.is_authenticated %}{% url 'accounts:profile' %}{% else %}{% url 'accounts:register' %}{% endif %}">{% if user.is_authenticated %}View your profile{% else %}Create your account{% endif %} {% include 'partials/icon.html' with name='arrow-up-right' class_name='icon-sm' only %}</a></div></div>
       </div>
     </div>
   </div>
 </section>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'js/location.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'js/location.js' %}?v=20261114b" defer></script>{% endblock %}

@@ -30,21 +30,25 @@ function locationFixture({ secure = true, available = true } = {}) {
     "[data-location-spinner]": spinner, "[data-manual-location]": manual,
   };
   let submissions = 0, calls = 0, success, failure, options;
+  const windowEvents = {};
   const form = {
+    events: {},
     querySelector: (key) => nodes[key],
     elements: { namedItem: (name) => name === "latitude" ? latitude : longitude },
     requestSubmit: () => { submissions += 1; },
-    addEventListener() {},
+    addEventListener(name, handler) { this.events[name] = handler; },
   };
   vm.runInNewContext(locationCode, {
     document: { querySelector: () => form, getElementById: () => feedback },
-    window: { isSecureContext: secure },
+    window: { isSecureContext: secure, addEventListener(name, handler) { windowEvents[name] = handler; } },
     navigator: available ? { geolocation: {
       getCurrentPosition(ok, fail, config) { calls += 1; success = ok; failure = fail; options = config; },
     } } : {},
   });
   return { button, label, spinner, feedback, latitude, longitude, manual,
     click: () => button.events.click(),
+    submit: () => form.events.submit(),
+    restore: () => windowEvents.pageshow({ persisted: true }),
     succeed: (lat, lon) => success({ coords: { latitude: lat, longitude: lon } }),
     fail: (code) => failure({ code }),
     get calls() { return calls; }, get submissions() { return submissions; },
@@ -75,7 +79,7 @@ test("permission denial keeps the page usable and reveals manual entry", () => {
   const state = locationFixture();
   state.click(); state.fail(1);
   assert.match(state.feedback.textContent, /permission was declined/);
-  assert.match(state.feedback.textContent, /Search by name or address/);
+  assert.match(state.feedback.textContent, /Enter coordinates from your map app/);
   assert.equal(state.manual.open, true);
   assert.equal(state.submissions, 0);
   assert.equal(state.button.disabled, false);
@@ -86,7 +90,7 @@ test("timeouts and unavailable positions stop the spinner", () => {
     state.click(); state.fail(code);
     assert.equal(state.spinner.hidden, true);
     assert.equal(state.submissions, 0);
-    assert.match(state.feedback.textContent, /demo location/);
+    assert.match(state.feedback.textContent, /choose a search area/);
   }
 });
 test("NaN, infinity and out-of-range locations never submit", () => {
@@ -102,11 +106,51 @@ test("insecure and unsupported browsers get a fallback without a request", () =>
     const state = locationFixture(options);
     state.click();
     assert.equal(state.calls, 0);
-    assert.match(state.feedback.textContent, /Search by name or address/);
+    assert.match(state.feedback.textContent, /Enter coordinates from your map app/);
   }
 });
 test("shared location script safely ignores pages without its form", () => {
   vm.runInNewContext(locationCode, { document: { querySelector: () => null } });
+});
+
+test("submitting a search keeps a clear directory loading state", () => {
+  const state = locationFixture();
+  state.submit();
+  assert.equal(state.button.disabled, true);
+  assert.equal(state.spinner.hidden, false);
+  assert.equal(state.label.textContent, "Searching nearby…");
+  assert.match(state.feedback.textContent, /Searching healthcare listings/);
+});
+
+test("returning with browser Back restores usable location controls", () => {
+  const state = locationFixture();
+  state.submit();
+  state.restore();
+  assert.equal(state.button.disabled, false);
+  assert.equal(state.spinner.hidden, true);
+  assert.equal(state.label.textContent, "Use my location");
+});
+
+test("searching the map centre submits wrapped coordinates without requesting GPS", () => {
+  const button = element(), feedback = element(), latitude = element(), longitude = element(), manual = element();
+  const data = { textContent: JSON.stringify({ origin: null, results: [] }) };
+  let submissions = 0;
+  const form = { elements: { namedItem: (name) => name === "latitude" ? latitude : longitude },
+    querySelector: () => manual, requestSubmit() { submissions += 1; } };
+  const map = { setView() {}, getCenter: () => ({ lat: 12.34, lng: 437.59 }) };
+  const L = { map: () => map, tileLayer: () => ({ on() {}, addTo() {} }) };
+  vm.runInNewContext(mapCode, {
+    window: { L }, L,
+    document: { getElementById: (id) => id === "facility-map-data" ? data : id === "map-feedback" ? feedback : id === "map-area-search" ? button : element(),
+      querySelector: () => form, querySelectorAll: () => [] },
+  });
+  assert.equal(button.hidden, false);
+  assert.match(feedback.textContent, /Choose a search location/);
+  button.events.click();
+  assert.equal(latitude.value, "12.340000");
+  assert.equal(longitude.value, "77.590000");
+  assert.equal(manual.open, true);
+  assert.equal(submissions, 1);
 });
 test("missing Leaflet leaves a helpful list fallback", () => {
   const feedback = element();

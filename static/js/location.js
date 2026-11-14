@@ -21,7 +21,7 @@
 
   function failure(message) {
     setLoading(false);
-    feedback.textContent = message + " Search by name or address, enter coordinates, or try the demo location.";
+    feedback.textContent = message + " Enter coordinates from your map app to choose a search area. Name and address filter listings in that area.";
     if (manual) manual.open = true;
   }
 
@@ -66,4 +66,15 @@
   form.addEventListener("invalid", () => {
     if (manual) manual.open = true;
   }, true);
+  form.addEventListener("submit", () => {
+    setLoading(true);
+    label.textContent = "Searching nearby…";
+    feedback.textContent = "Searching healthcare listings. A new area can take a few seconds. Call 112 directly for urgent help.";
+  });
+  window.addEventListener("pageshow", (event) => {
+    // Back/forward cache can restore the old page with its submitting state.
+    if (!event.persisted) return;
+    setLoading(false);
+    feedback.textContent = "Choose a search area or update the filters when you're ready.";
+  });
 })();
