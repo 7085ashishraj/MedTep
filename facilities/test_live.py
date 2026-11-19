@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlsplit
 import uuid
 
@@ -25,6 +26,7 @@ def snapshot(elements=None):
             "retrieved_at": "2026-11-14T10:00:00+00:00", "truncated": False}
 
 
+@override_settings(FACILITIES_OVERPASS_METHOD="GET")
 class LiveParsingTests(SimpleTestCase):
     def test_all_four_categories_and_way_centres(self):
         for tags, expected in (({"amenity": "hospital"}, "hospital"), ({"amenity": "pharmacy"}, "pharmacy"),
@@ -73,7 +75,7 @@ class LiveParsingTests(SimpleTestCase):
         self.assertIn("timeout:12", query)
         self.assertIn("out center tags 2000", query)
         self.assertIn("MEDTAP", request.get_header("User-agent"))
-        self.assertEqual(opened.call_args.kwargs["timeout"], 30)
+        self.assertEqual(opened.call_args.kwargs["timeout"], 45)
         self.assertEqual(len(data["elements"]), 1)
 
     def test_incomplete_invalid_and_oversize_provider_responses_are_errors(self):
@@ -98,12 +100,33 @@ class LiveParsingTests(SimpleTestCase):
                 live.request_elements(0, 0, 5)
         opened.assert_not_called()
 
+    @override_settings(FACILITIES_OVERPASS_METHOD="INVALID")
+    def test_invalid_request_method_is_not_silently_sent_as_get(self):
+        with patch("facilities.live.urlopen") as opened:
+            with self.assertRaises(live.ProviderUnavailable) as caught:
+                live.request_elements(0, 0, 5)
+        self.assertFalse(caught.exception.retryable)
+        opened.assert_not_called()
+
+    def test_capacity_errors_are_distinguished_from_configuration_errors(self):
+        for code, retryable, message in ((502, True, "busy"), (429, True, "busy"), (403, False, "configuration")):
+            with self.subTest(code=code):
+                error = HTTPError("https://provider.example/secret-path", code, "sensitive upstream text", {}, None)
+                with patch("facilities.live.urlopen", side_effect=error):
+                    with self.assertRaises(live.ProviderUnavailable) as caught:
+                        live.request_elements(0, 0, 5)
+                self.assertEqual(caught.exception.retryable, retryable)
+                self.assertIn(message, str(caught.exception))
+                self.assertNotIn("sensitive", str(caught.exception))
+                self.assertNotIn("secret-path", str(caught.exception))
+
 
 class LiveCacheTests(SimpleTestCase):
     def setUp(self):
         self.directory = TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.settings_override = override_settings(
+            FACILITIES_OVERPASS_FALLBACK_URLS=[],
             FACILITIES_LOCK_DIR=Path(self.directory.name) / "provider.lock",
             CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
                     "facilities": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": str(uuid.uuid4())}},
@@ -118,7 +141,7 @@ class LiveCacheTests(SimpleTestCase):
         self.assertEqual(first[1], "fresh")
         self.assertEqual(second[1], "cached")
         self.assertEqual(first[0]["retrieved_at"], second[0]["retrieved_at"])
-        request.assert_called_once_with(12.97, 77.59, 5)
+        request.assert_called_once_with(12.97, 77.59, 5, endpoint=live.settings.FACILITIES_OVERPASS_URL)
 
     def test_outage_uses_only_explicitly_labelled_older_cache_and_cools_down(self):
         with patch("facilities.live.FRESH_SECONDS", 0), patch("facilities.live.request_elements", return_value=snapshot()):
@@ -131,12 +154,87 @@ class LiveCacheTests(SimpleTestCase):
         self.assertEqual(again[1], "stale")
         self.assertEqual(request.call_count, 1)
 
+    @override_settings(
+        FACILITIES_OVERPASS_URL="https://primary.example/api/interpreter",
+        FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"],
+    )
+    def test_changing_provider_priority_reuses_the_successful_area_snapshot(self):
+        with patch("facilities.live.request_elements", return_value=snapshot()) as request:
+            first = live.nearby_listings(0, 0, 5)
+            with override_settings(
+                FACILITIES_OVERPASS_URL="https://backup.example/api/interpreter",
+                FACILITIES_OVERPASS_FALLBACK_URLS=["https://primary.example/api/interpreter"],
+            ):
+                reordered = live.nearby_listings(0, 0, 5)
+        self.assertEqual((first[1], reordered[1]), ("fresh", "cached"))
+        self.assertEqual(first[0], reordered[0])
+        self.assertEqual(request.call_count, 1)
+
     def test_in_flight_guard_prevents_parallel_provider_calls(self):
         lock = Path(self.directory.name) / "provider.lock"
         lock.mkdir()
         with patch("facilities.live.request_elements") as request:
             result = live.nearby_listings(0, 0, 5)
         self.assertEqual(result[1], "unavailable")
+        request.assert_not_called()
+
+    @override_settings(
+        FACILITIES_OVERPASS_URL="https://primary.example/secret-path/api/interpreter",
+        FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"],
+    )
+    def test_busy_primary_uses_backup_caches_results_and_skips_failed_host_for_other_areas(self):
+        busy = HTTPError(live.settings.FACILITIES_OVERPASS_URL, 502, "sensitive response", {}, None)
+        raw = json.dumps(snapshot()).encode()
+        with patch("facilities.live.urlopen", side_effect=[busy, BytesIO(raw), BytesIO(raw)]) as opened:
+            with self.assertLogs("facilities.live", level="WARNING") as logs:
+                first = live.nearby_listings(0, 0, 5)
+            cached = live.nearby_listings(0, 0, 5)
+            other_area = live.nearby_listings(.02, 0, 5)
+        self.assertEqual((first[1], cached[1], other_area[1]), ("fresh", "cached", "fresh"))
+        self.assertEqual(first[0]["provider_host"], "backup.example")
+        self.assertEqual(first[0]["elements"], snapshot()["elements"])
+        self.assertEqual([urlsplit(call.args[0].full_url).hostname for call in opened.call_args_list],
+                         ["primary.example", "backup.example", "backup.example"])
+        self.assertIn("status=502", logs.output[0])
+        self.assertNotIn("secret-path", logs.output[0])
+        self.assertNotIn("sensitive", logs.output[0])
+
+    @override_settings(FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"])
+    def test_all_providers_failing_stays_unavailable_and_cools_down_without_repeated_requests(self):
+        busy = HTTPError(live.settings.FACILITIES_OVERPASS_URL, 502, "busy", {}, None)
+        with patch("facilities.live.urlopen", side_effect=[busy, TimeoutError()]) as opened:
+            with self.assertLogs("facilities.live", level="WARNING"):
+                first = live.nearby_listings(0, 0, 5)
+            again = live.nearby_listings(.02, 0, 5)
+        self.assertIsNone(first[0])
+        self.assertEqual((first[1], again[1]), ("unavailable", "unavailable"))
+        self.assertEqual(opened.call_count, 2)
+        self.assertFalse((Path(self.directory.name) / "provider.lock").exists())
+
+    @override_settings(
+        FACILITIES_OVERPASS_URL="http://invalid.example/api/interpreter",
+        FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"],
+    )
+    def test_bad_configuration_never_falls_through_to_another_provider_even_on_retry(self):
+        with patch("facilities.live.urlopen") as opened:
+            with self.assertLogs("facilities.live", level="WARNING"):
+                first = live.nearby_listings(0, 0, 5)
+                again = live.nearby_listings(0, 0, 5)
+        self.assertEqual((first[1], again[1]), ("unavailable", "unavailable"))
+        opened.assert_not_called()
+
+    @override_settings(FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"])
+    def test_active_backup_request_lock_is_not_removed_after_the_old_single_request_timeout(self):
+        import os
+        import time
+
+        lock = Path(self.directory.name) / "provider.lock"
+        lock.mkdir()
+        os.utime(lock, (time.time() - 65, time.time() - 65))
+        with patch("facilities.live.request_elements") as request:
+            result = live.nearby_listings(0, 0, 5)
+        self.assertEqual(result[1], "unavailable")
+        self.assertTrue(lock.exists())
         request.assert_not_called()
 
 
@@ -223,3 +321,28 @@ class LiveSearchTests(TestCase):
             response = self.client.get(reverse("facilities:nearby_api"), {"latitude": 0, "longitude": 0, **params})
             self.assertEqual(response.status_code, 400)
         self.request.assert_not_called()
+
+    @override_settings(
+        FACILITIES_OVERPASS_URL="https://primary.example/api/interpreter",
+        FACILITIES_OVERPASS_FALLBACK_URLS=["https://backup.example/api/interpreter"],
+    )
+    def test_html_and_api_recover_from_real_http_failure_using_the_backup_snapshot(self):
+        self.provider.stop()
+        with TemporaryDirectory() as directory:
+            with override_settings(
+                FACILITIES_LOCK_DIR=Path(directory) / "provider.lock",
+                CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+                        "facilities": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache", "LOCATION": str(uuid.uuid4())}},
+            ):
+                busy = HTTPError("https://primary.example/api/interpreter", 502, "busy", {}, None)
+                with patch("facilities.live.urlopen", side_effect=[busy, BytesIO(json.dumps(snapshot()).encode())]) as opened:
+                    with self.assertLogs("facilities.live", level="WARNING"):
+                        html = self.client.get(reverse("facilities:nearby"), {"latitude": 0, "longitude": 0})
+                    api = self.client.get(reverse("facilities:nearby_api"), {"latitude": 0, "longitude": 0})
+        self.assertEqual((html.status_code, api.status_code), (200, 200))
+        self.assertContains(html, "FAKE provider fixture")
+        self.assertContains(html, "backup.example")
+        self.assertEqual(api.json()["count"], 1)
+        self.assertEqual(api.json()["results"][0]["id"], "osm-node-101")
+        self.assertEqual(api.json()["search"]["status"], "cached")
+        self.assertEqual(opened.call_count, 2)

@@ -1,5 +1,4 @@
 from django.core.paginator import InvalidPage
-from django.conf import settings
 from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
@@ -14,6 +13,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 
 from .forms import FacilitySearchForm
+from .live import provider_endpoints
 from .serializers import FacilityMatchSerializer
 from .services import search_facilities
 
@@ -42,7 +42,11 @@ def nearby(request):
     response = render(request, "facilities/nearby.html", {
         "form": form, "page_obj": page, "has_location": origin is not None,
         "search_metadata": page.search_metadata if page is not None else None,
-        "directory_provider_url": "https://" + (urlsplit(settings.FACILITIES_OVERPASS_URL).hostname or "www.openstreetmap.org") + "/",
+        "directory_providers": [
+            {"name": host, "url": "https://" + host + "/"}
+            for endpoint in provider_endpoints()
+            if (host := urlsplit(endpoint).hostname)
+        ],
         "map_data": {"origin": origin, "results": markers, "search": page.search_metadata if page is not None else None},
         "previous_query": page_query(request.GET, page.previous_page_number()) if page and page.has_previous() else None,
         "next_query": page_query(request.GET, page.next_page_number()) if page and page.has_next() else None,

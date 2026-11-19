@@ -80,10 +80,21 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Real facility discovery. Admin-entered ordinary facilities are included too.
 FACILITIES_LIVE_ENABLED = env("FACILITIES_LIVE_ENABLED", default=True, cast=bool)
-FACILITIES_OVERPASS_URL = env(
-    "FACILITIES_OVERPASS_URL", default="https://overpass-api.de/api/interpreter",
+PUBLIC_OVERPASS_URLS = (
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
 )
-FACILITIES_OVERPASS_METHOD = env("FACILITIES_OVERPASS_METHOD", default="GET").upper()
+FACILITIES_OVERPASS_URL = env(
+    "FACILITIES_OVERPASS_URL", default=PUBLIC_OVERPASS_URLS[0],
+).strip()
+FACILITIES_OVERPASS_METHOD = env("FACILITIES_OVERPASS_METHOD", default="POST").strip().upper()
+# Custom/managed providers stay private unless their operator explicitly opts in.
+FACILITIES_OVERPASS_FALLBACK_URLS = env(
+    "FACILITIES_OVERPASS_FALLBACK_URLS",
+    default=(",".join(url for url in PUBLIC_OVERPASS_URLS if url != FACILITIES_OVERPASS_URL)
+             if FACILITIES_OVERPASS_URL in PUBLIC_OVERPASS_URLS else ""),
+    cast=Csv(),
+)
 FACILITIES_LOCK_DIR = BASE_DIR / ".cache" / "overpass.lock"
 CACHES = {
     "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},

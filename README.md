@@ -20,7 +20,7 @@ requests are project records; no real dispatch service is connected.
 
 - Python 3.12 or newer; this project has been tested with Python 3.14.
 - Packages pinned in `requirements.txt`: Django, Django REST Framework and python-decouple.
-- SQLite for local development. PostgreSQL/PostGIS support is not configured yet.
+- SQLite for local storage. No separate database server is required.
 - Node.js on PATH only if running the JavaScript checks.
 
 Bootstrap, Bootstrap Icons and Leaflet are included locally. Internet access is
@@ -46,8 +46,9 @@ Live search is enabled by default and needs no API key. Optional `.env` settings
 
 ```dotenv
 FACILITIES_LIVE_ENABLED=True
-FACILITIES_OVERPASS_URL=https://overpass-api.de/api/interpreter
-FACILITIES_OVERPASS_METHOD=GET
+FACILITIES_OVERPASS_URL=https://maps.mail.ru/osm/tools/overpass/api/interpreter
+FACILITIES_OVERPASS_METHOD=POST
+FACILITIES_OVERPASS_FALLBACK_URLS=https://overpass-api.de/api/interpreter
 ```
 
 The default radius is 5 km, adjustable from 0.1–25 km. A rounded area centre
@@ -61,11 +62,29 @@ the radius. The API includes `search` metadata and per-listing `source`,
 `source_url` and `opening_hours`. OSM IDs are strings such as `osm-node-123`;
 local directory IDs remain integers. OSM records are not silently copied into SQLite.
 
-The shared public Overpass endpoint is for light, manually triggered use. For a
+Searches use VK Maps Overpass by default, with the main Overpass public server
+as a backup if it is busy or unreachable. Both return OpenStreetMap data; the configured
+hosts are linked in the search page's location privacy information. Each failed
+endpoint cools down for 60 seconds while healthy alternatives remain available.
+There are at most three distinct endpoint attempts per search. Set
+`FACILITIES_OVERPASS_FALLBACK_URLS=` to disable fallback, or provide a comma-separated
+list of endpoints you operate or trust. A custom primary URL has no public fallback
+by default; if you copied `.env.example`, clear its explicit fallback when switching
+to a private provider. Public endpoint information is maintained in the
+[OpenStreetMap Overpass instance directory](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances).
+
+After changing `.env`, stop and restart Django; editing `.env` alone does not
+reload settings. For an existing installation, also change
+`FACILITIES_OVERPASS_METHOD=GET` to `POST` to use the default provider's POST interface.
+If all endpoints fail, the server log reports the failed host, error type and HTTP
+status without recording query coordinates or provider credentials. A 502/503
+usually means the public server is busy; a timeout means it did not respond in time.
+
+The shared public Overpass endpoints are for light, manually triggered use. For a
 public launch or dependable capacity, configure a managed or self-hosted provider
 and review its service/privacy terms. See the [Overpass usage guidance](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html).
-The endpoint is configurable without changing code; providers supporting POST can
-use `FACILITIES_OVERPASS_METHOD=POST`. Public services may throttle or time out;
+The endpoints are configurable without changing code; providers requiring GET can
+use `FACILITIES_OVERPASS_METHOD=GET`. Public services may throttle or time out;
 the UI reports this and keeps Call 112 available. No automatic bulk harvesting,
 polling or geocoding service is configured.
 
@@ -234,13 +253,13 @@ Run all project checks with the project's Python interpreter and Node.js on PATH
 .\.venv\Scripts\python.exe scripts/check_project.py
 ```
 
-This runs Django system checks, migration drift detection, **211 Django tests**
+This runs Django system checks, migration drift detection, **219 Django tests**
 and **41 JavaScript checks**, stopping on failure. Tests use a separate test
 database and temporary child-process settings; your `.env` is unchanged.
 Provider calls are mocked in automated tests. Separately, the real website/API
-was checked against a public Bengaluru city-centre search on 14 November 2026:
-798 listings within 5 km (284 hospitals, 263 clinics, 220 pharmacies, 31 blood
-banks). Those are source listings at that time, not a guarantee of completeness
+was checked against a public Bengaluru city-centre search on 18 November 2026:
+787 listings within 5 km, with HTTP 200 from both the HTML page and JSON API
+after recovery from an overloaded endpoint. Those are source listings at that time, not a guarantee of completeness
 or current availability. No personal GPS position, test calls or messages were used.
 
 To run the Django suite alone:
@@ -277,9 +296,8 @@ URLs and may enter browser history/server logs; map tile requests reveal the
 viewed area to the map provider. Coarse area-query results are cached separately
 from private SOS records. Stored SOS coordinates remain until removed.
 
-This repository contains a local-development project. Production hosting,
-HTTPS/security settings and a data-retention policy require separate preparation.
-Deployment is not configured yet.
+This project runs locally with Django and SQLite using the setup instructions above.
+Hosting configuration is not included.
 
 See [FIRST_AID_SOURCES.md](FIRST_AID_SOURCES.md) for medical-content provenance and
 [THIRD_PARTY.md](THIRD_PARTY.md) for asset licenses and references.

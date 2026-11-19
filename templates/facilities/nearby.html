@@ -41,7 +41,7 @@
           </div>
           <p class="field-help">Enter a location's latitude and longitude if GPS is unavailable. You can copy coordinates from your map app. Name/address is a listing filter, not a city-to-coordinate lookup.</p>
         </details>
-        <p class="finder-privacy">GPS is requested only when you tap the button. Coordinates appear in this site's search URL and may enter history/logs. A rounded area centre (about 1 km precision) is sent through our server to the <a href="{{ directory_provider_url }}" target="_blank" rel="noopener noreferrer">directory provider</a>; no account or medical details are sent. Area results are cached, not saved to your profile. Map tile requests reveal the area viewed.</p>
+        <p class="finder-privacy">GPS is requested only when you tap the button. Coordinates appear in this site's search URL and may enter history/logs. A rounded area centre (about 1 km precision) is sent through our server to the directory{% if directory_providers|length > 1 %}, with a backup if needed{% endif %}: {% for provider in directory_providers %}<a href="{{ provider.url }}" target="_blank" rel="noopener noreferrer">{{ provider.name }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}; no account or medical details are sent. Area results are cached, not saved to your profile. Map tile requests reveal the area viewed.</p>
       </div>
     </form>
     {% if not form.errors %}
